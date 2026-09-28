@@ -221,7 +221,7 @@ self.addEventListener('periodicsync', event => {
       await updateBadge(me.unread || 0);
       const lastKnown = (await idbGet('lastUnread')) || 0;
       if ((me.unread || 0) > lastKnown) {
-        await self.registration.showNotification('Новые сообщения в SQUADUP 💬', {
+        await self.registration.showNotification('Новые сообщения в SQUADUP', {
           body: `У тебя ${me.unread} непрочитанных — загляни в чаты.`,
           icon: '/icons/icon-192.png',
           badge: '/icons/favicon-64.png',

@@ -37,157 +37,157 @@ DB_LOCK = threading.Lock()
 # platforms: pc | ps | xbox
 GAMES = [
     # --- соревновательные шутеры / киберспорт ---
-    dict(id="cs2", name="Counter-Strike 2", short="CS2", emoji="🔫", genre="Шутер", modes=["comp"], platforms=["pc"],
+    dict(id="cs2", name="Counter-Strike 2", short="CS2", genre="Шутер", modes=["comp"], platforms=["pc"],
          ranks=["Silver", "Nova", "Master Guardian", "DMG", "LE", "LEM", "Supreme", "Global Elite", "Faceit 8+"],
          roles=["IGL", "Штурмовик", "AWP-снайпер", "Поддержка", "Люркер", "Тренер"]),
-    dict(id="valorant", name="VALORANT", short="VALORANT", emoji="🎯", genre="Шутер", modes=["comp"], platforms=["pc"],
+    dict(id="valorant", name="VALORANT", short="VALORANT", genre="Шутер", modes=["comp"], platforms=["pc"],
          ranks=["Iron", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Ascendant", "Immortal", "Radiant"],
          roles=["Дуэлянт", "Инициатор", "Контроллер", "Страж", "IGL"]),
-    dict(id="dota2", name="Dota 2", short="Dota 2", emoji="🛡️", genre="MOBA", modes=["comp"], platforms=["pc"],
+    dict(id="dota2", name="Dota 2", short="Dota 2", genre="MOBA", modes=["comp"], platforms=["pc"],
          ranks=["Herald", "Guardian", "Crusader", "Archon", "Legend", "Ancient", "Divine", "Immortal"],
          roles=["Керри", "Мидер", "Оффлейнер", "Саппорт 4", "Саппорт 5", "Капитан"]),
-    dict(id="lol", name="League of Legends", short="LoL", emoji="⚔️", genre="MOBA", modes=["comp"], platforms=["pc"],
+    dict(id="lol", name="League of Legends", short="LoL", genre="MOBA", modes=["comp"], platforms=["pc"],
          ranks=["Iron", "Bronze", "Silver", "Gold", "Platinum", "Emerald", "Diamond", "Master", "Challenger"],
          roles=["Топ", "Лес", "Мид", "ADC", "Поддержка"]),
-    dict(id="apex", name="Apex Legends", short="Apex", emoji="🏹", genre="Шутер", modes=["comp", "coop"],
+    dict(id="apex", name="Apex Legends", short="Apex", genre="Шутер", modes=["comp", "coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Rookie", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Predator"],
          roles=["Фраггер", "Скаут", "Поддержка", "IGL"]),
-    dict(id="ow2", name="Overwatch 2", short="OW2", emoji="🦾", genre="Шутер", modes=["comp"],
+    dict(id="ow2", name="Overwatch 2", short="OW2", genre="Шутер", modes=["comp"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Grandmaster", "Top 500"],
          roles=["Танк", "ДПС", "Саппорт"]),
-    dict(id="r6", name="Rainbow Six Siege", short="R6 Siege", emoji="🚪", genre="Шутер", modes=["comp"],
+    dict(id="r6", name="Rainbow Six Siege", short="R6 Siege", genre="Шутер", modes=["comp"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Copper", "Bronze", "Silver", "Gold", "Platinum", "Emerald", "Diamond", "Champion"],
          roles=["Фраггер", "Анкор", "Роумер", "Сапорт", "IGL"]),
-    dict(id="cod", name="Call of Duty", short="CoD", emoji="💥", genre="Шутер", modes=["comp"],
+    dict(id="cod", name="Call of Duty", short="CoD", genre="Шутер", modes=["comp"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Crimson", "Iridescent", "Top 250"],
          roles=["Ассаулт", "Снайпер", "Поддержка", "IGL"]),
-    dict(id="marvel_rivals", name="Marvel Rivals", short="Rivals", emoji="🦸", genre="Шутер", modes=["comp"],
+    dict(id="marvel_rivals", name="Marvel Rivals", short="Rivals", genre="Шутер", modes=["comp"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Grandmaster", "Celestial", "Eternity"],
          roles=["Вангард", "Дуэлянт", "Стратег"]),
-    dict(id="fortnite", name="Fortnite", short="Fortnite", emoji="🏗️", genre="Battle Royale", modes=["comp", "coop"],
+    dict(id="fortnite", name="Fortnite", short="Fortnite", genre="Battle Royale", modes=["comp", "coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Elite", "Champion", "Unreal"],
          roles=["Фраггер", "Строитель", "Сапорт", "IGL"]),
-    dict(id="pubg", name="PUBG: Battlegrounds", short="PUBG", emoji="🪖", genre="Battle Royale", modes=["comp", "coop"],
+    dict(id="pubg", name="PUBG: Battlegrounds", short="PUBG", genre="Battle Royale", modes=["comp", "coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Бронза", "Серебро", "Золото", "Платина", "Алмаз", "Мастер", "Топ-500"],
          roles=["Ассаулт", "Снайпер", "Медик", "Водитель", "IGL"]),
-    dict(id="rl", name="Rocket League", short="Rocket League", emoji="🚗", genre="Спорт", modes=["comp"],
+    dict(id="rl", name="Rocket League", short="Rocket League", genre="Спорт", modes=["comp"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "GC", "SSL"],
          roles=["Нападающий", "Полузащитник", "Защитник", "Вратарь"]),
-    dict(id="bf6", name="Battlefield 6", short="BF6", emoji="🪂", genre="Шутер", modes=["comp", "coop"],
+    dict(id="bf6", name="Battlefield 6", short="BF6", genre="Шутер", modes=["comp", "coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Рядовой", "Сержант", "Лейтенант", "Полковник"],
          roles=["Штурмовик", "Инженер", "Медик", "Разведка", "Пилот"]),
-    dict(id="deadlock", name="Deadlock", short="Deadlock", emoji="🕹️", genre="MOBA-шутер", modes=["comp"], platforms=["pc"],
+    dict(id="deadlock", name="Deadlock", short="Deadlock", genre="MOBA-шутер", modes=["comp"], platforms=["pc"],
          ranks=["Новичок", "Archon", "Oracle", "Phantom", "Eternus"],
          roles=["Керри", "Ганкер", "Танк", "Сапорт"]),
-    dict(id="eafc", name="EA SPORTS FC", short="EA FC", emoji="⚽", genre="Спорт", modes=["comp"],
+    dict(id="eafc", name="EA SPORTS FC", short="EA FC", genre="Спорт", modes=["comp"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Div 10", "Div 7", "Div 5", "Div 3", "Div 1", "Elite"],
          roles=["Любая позиция", "Атака", "Полузащита", "Защита", "Вратарь"]),
     # --- кооператив / PvE ---
-    dict(id="hd2", name="Helldivers 2", short="Helldivers 2", emoji="🪐", genre="Кооп-шутер", modes=["coop"],
+    dict(id="hd2", name="Helldivers 2", short="Helldivers 2", genre="Кооп-шутер", modes=["coop"],
          platforms=["pc", "ps"],
          ranks=["Кадет", "Сержант", "Старшип", "Коммандер", "Адмирал", "Hell Dive"],
          roles=["Анти-танк", "Стрелок", "Поддержка", "Разведка", "Пилот"]),
-    dict(id="arc_raiders", name="ARC Raiders", short="ARC Raiders", emoji="🤖", genre="Extraction-шутер",
+    dict(id="arc_raiders", name="ARC Raiders", short="ARC Raiders", genre="Extraction-шутер",
          modes=["coop"], platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Рейдер", "Ветеран", "Элита"],
          roles=["Штурмовик", "Инженер", "Медик", "Скаут"]),
-    dict(id="tarkov", name="Escape from Tarkov", short="Tarkov", emoji="🎒", genre="Extraction-шутер",
+    dict(id="tarkov", name="Escape from Tarkov", short="Tarkov", genre="Extraction-шутер",
          modes=["coop"], platforms=["pc"],
          ranks=["Новичок", "Уровень 15+", "Уровень 30+", "Уровень 45+", "Хардкор"],
          roles=["Штурмовик", "Снайпер", "Медик", "Рейдер"]),
-    dict(id="delta", name="Delta Force", short="Delta Force", emoji="🎖️", genre="Шутер", modes=["comp", "coop"],
+    dict(id="delta", name="Delta Force", short="Delta Force", genre="Шутер", modes=["comp", "coop"],
          platforms=["pc"],
          ranks=["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master"],
          roles=["Штурмовик", "Медик", "Инженер", "Скаут"]),
-    dict(id="drg", name="Deep Rock Galactic", short="DRG", emoji="⛏️", genre="Кооп-шутер", modes=["coop"],
+    dict(id="drg", name="Deep Rock Galactic", short="DRG", genre="Кооп-шутер", modes=["coop"],
          platforms=["pc", "xbox", "ps"],
          ranks=["Зелёный бородач", "Бородач", "Седобородый", "Легендарный"],
          roles=["Скаут", "Инженер", "Бурильщик", "Стрелок"]),
-    dict(id="pd3", name="PAYDAY 3", short="PAYDAY 3", emoji="🎭", genre="Кооп-шутер", modes=["coop"],
+    dict(id="pd3", name="PAYDAY 3", short="PAYDAY 3", genre="Кооп-шутер", modes=["coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Профи", "Убийца", "Легенда"],
          roles=["Стелс", "Штурм", "Техник", "Переговорщик"]),
-    dict(id="destiny2", name="Destiny 2", short="Destiny 2", emoji="🌌", genre="Looter-shooter", modes=["coop", "comp"],
+    dict(id="destiny2", name="Destiny 2", short="Destiny 2", genre="Looter-shooter", modes=["coop", "comp"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Стражник", "Легенда", "Рейд-хардкор"],
          roles=["Титан", "Охотник", "Варлок"]),
-    dict(id="warframe", name="Warframe", short="Warframe", emoji="🌀", genre="Looter-shooter", modes=["coop"],
+    dict(id="warframe", name="Warframe", short="Warframe", genre="Looter-shooter", modes=["coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "MR 10+", "MR 20+", "MR 30+"],
          roles=["DPS", "Поддержка", "Контроль", "Спасатель"]),
-    dict(id="division2", name="The Division 2", short="Division 2", emoji="🎯", genre="Looter-shooter",
+    dict(id="division2", name="The Division 2", short="Division 2", genre="Looter-shooter",
          modes=["coop", "comp"], platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Уровень 40", "SHD 100+", "SHD 500+"],
          roles=["DPS", "Танк", "Хилер", "Скилл"]),
-    dict(id="lethal", name="Lethal Company", short="Lethal Co.", emoji="📦", genre="Хоррор-кооп", modes=["coop"],
+    dict(id="lethal", name="Lethal Company", short="Lethal Co.", genre="Хоррор-кооп", modes=["coop"],
          platforms=["pc"],
          ranks=["Стажёр", "Сотрудник", "Старший сотрудник", "Легенда компании"],
          roles=["Сканер", "Сборщик", "Носильщик", "Связист"]),
-    dict(id="phasmo", name="Phasmophobia", short="Phasmophobia", emoji="👻", genre="Хоррор-кооп", modes=["coop"],
+    dict(id="phasmo", name="Phasmophobia", short="Phasmophobia", genre="Хоррор-кооп", modes=["coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Опытный", "Профи", "Эксперт", "Ночной кошмар"],
          roles=["Исследователь", "Фотограф", "Оператор", "Скептик"]),
-    dict(id="sot", name="Sea of Thieves", short="Sea of Thieves", emoji="🏴‍☠️", genre="Приключение",
+    dict(id="sot", name="Sea of Thieves", short="Sea of Thieves", genre="Приключение",
          modes=["coop", "pvp"], platforms=["pc", "ps", "xbox"],
          ranks=["Матрос", "Старпом", "Капитан", "Легенда Воров"],
          roles=["Рулевой", "Канонир", "Такелажник", "Кок"]),
-    dict(id="bg3", name="Baldur's Gate 3", short="BG3", emoji="🎲", genre="RPG", modes=["coop"],
+    dict(id="bg3", name="Baldur's Gate 3", short="BG3", genre="RPG", modes=["coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Акт I", "Акт II", "Акт III", "Хардкор"],
          roles=["Танк", "Хилер", "Маг", "Разбойник", "Бард"]),
-    dict(id="mhw", name="Monster Hunter Wilds", short="MH Wilds", emoji="🐉", genre="Экшн-RPG", modes=["coop"],
+    dict(id="mhw", name="Monster Hunter Wilds", short="MH Wilds", genre="Экшн-RPG", modes=["coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Охотник", "Мастер рангов", "HR 100+"],
          roles=["Мечник", "Стрелок", "Поддержка", "Танк"]),
-    dict(id="minecraft", name="Minecraft", short="Minecraft", emoji="🧱", genre="Песочница", modes=["coop"],
+    dict(id="minecraft", name="Minecraft", short="Minecraft", genre="Песочница", modes=["coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Строитель", "Редстоун-инженер", "Ветеран"],
          roles=["Строитель", "Фарм", "PVP", "Исследователь"]),
-    dict(id="valheim", name="Valheim", short="Valheim", emoji="🪓", genre="Выживание", modes=["coop"], platforms=["pc"],
+    dict(id="valheim", name="Valheim", short="Valheim", genre="Выживание", modes=["coop"], platforms=["pc"],
          ranks=["Новичок", "Воин", "Ветеран", "Убийца боссов"],
          roles=["Воин", "Лучник", "Маг", "Строитель"]),
-    dict(id="palworld", name="Palworld", short="Palworld", emoji="🐣", genre="Выживание", modes=["coop"],
+    dict(id="palworld", name="Palworld", short="Palworld", genre="Выживание", modes=["coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Тренер", "Мастер", "Легенда"],
          roles=["Фарм", "Бой", "Строитель", "Исследователь"]),
-    dict(id="terraria", name="Terraria", short="Terraria", emoji="🌳", genre="Песочница", modes=["coop"],
+    dict(id="terraria", name="Terraria", short="Terraria", genre="Песочница", modes=["coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Хардмод", "Планиум", "Эксперт"],
          roles=["Воин", "Маг", "Стрелок", "Призыватель"]),
-    dict(id="enshrouded", name="Enshrouded", short="Enshrouded", emoji="🌫️", genre="Выживание", modes=["coop"],
+    dict(id="enshrouded", name="Enshrouded", short="Enshrouded", genre="Выживание", modes=["coop"],
          platforms=["pc"],
          ranks=["Новичок", "Искатель", "Ветеран", "Мастер"],
          roles=["Воин", "Маг", "Стрелок", "Строитель"]),
-    dict(id="itt", name="It Takes Two", short="It Takes Two", emoji="💞", genre="Кооп-приключение", modes=["coop"],
+    dict(id="itt", name="It Takes Two", short="It Takes Two", genre="Кооп-приключение", modes=["coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Прошли главу", "Прошли игру"],
          roles=["Мэй", "Коди"]),
-    dict(id="rust", name="Rust", short="Rust", emoji="⛏️", genre="Выживание", modes=["coop", "pvp"], platforms=["pc"],
+    dict(id="rust", name="Rust", short="Rust", genre="Выживание", modes=["coop", "pvp"], platforms=["pc"],
          ranks=["Новичок", "Фермер", "Рейдер", "Полный вайп"],
          roles=["Фарм", "Рейд", "PVP", "Строитель", "Электрик"]),
-    dict(id="gta", name="GTA Online", short="GTA Online", emoji="🚔", genre="Экшн", modes=["coop", "pvp"],
+    dict(id="gta", name="GTA Online", short="GTA Online", genre="Экшн", modes=["coop", "pvp"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "Уровень 50+", "Уровень 120+", "Уровень 250+"],
          roles=["Миссии", "Хейсты", "Гонки", "Свободный режим"]),
-    dict(id="wow", name="World of Warcraft", short="WoW", emoji="🗡️", genre="MMORPG", modes=["coop", "comp"],
+    dict(id="wow", name="World of Warcraft", short="WoW", genre="MMORPG", modes=["coop", "comp"],
          platforms=["pc"],
          ranks=["Новичок", "Ключи +10", "Мифик-рейд", "Хардкор"],
          roles=["Танк", "Хилер", "DPS", "Рейд-лид"]),
-    dict(id="ffxiv", name="Final Fantasy XIV", short="FFXIV", emoji="🏰", genre="MMORPG", modes=["coop"],
+    dict(id="ffxiv", name="Final Fantasy XIV", short="FFXIV", genre="MMORPG", modes=["coop"],
          platforms=["pc", "ps", "xbox"],
          ranks=["Новичок", "AR 30+", "Савейдж-рейд", "Легенда"],
          roles=["Танк", "Хилер", "DPS"]),
-    dict(id="albion", name="Albion Online", short="Albion", emoji="⚜️", genre="MMORPG", modes=["coop", "pvp"],
+    dict(id="albion", name="Albion Online", short="Albion", genre="MMORPG", modes=["coop", "pvp"],
          platforms=["pc"],
          ranks=["Новичок", "T5", "T7", "T8"],
          roles=["Танк", "Хилер", "DPS", "Сапорт"]),
@@ -207,14 +207,14 @@ OAUTH_LOCK = threading.Lock()
 PLATFORM_LABELS = {"pc": "PC", "ps": "PlayStation", "xbox": "Xbox"}
 MODE_LABELS = {"coop": "Кооператив", "comp": "Соревновательный", "pvp": "PvP"}
 REGIONS = [
-    dict(id="ru", label="Россия", flag="🇷🇺"),
-    dict(id="cis", label="СНГ", flag="🌍"),
-    dict(id="kz", label="Казахстан", flag="🇰🇿"),
-    dict(id="by", label="Беларусь", flag="🇧🇾"),
-    dict(id="ua", label="Украина", flag="🇺🇦"),
-    dict(id="de", label="Германия", flag="🇩🇪"),
-    dict(id="pl", label="Польша", flag="🇵🇱"),
-    dict(id="eu", label="Европа", flag="🇪🇺"),
+    dict(id="ru", label="Россия"),
+    dict(id="cis", label="СНГ"),
+    dict(id="kz", label="Казахстан"),
+    dict(id="by", label="Беларусь"),
+    dict(id="ua", label="Украина"),
+    dict(id="de", label="Германия"),
+    dict(id="pl", label="Польша"),
+    dict(id="eu", label="Европа"),
 ]
 REGION_BY_ID = {r["id"]: r for r in REGIONS}
 
@@ -640,7 +640,7 @@ REPLIES = [
     "Привет! Я в деле, только микрофон проверю. Где играем — дискорд?",
     "Хей! Сейчас на работе, но после 19:00 свободен, добавимся?",
     "Согласен, го. Только предупреждаю: я саппорт-мейн, устроит?",
-    "Йо! Играл вчера до трёх ночи, но ради хорошего состава я всегда готов 😄",
+    "Йо! Играл вчера до трёх ночи, но ради хорошего состава я всегда готов",
     "Привет, спасибо за сообщение! Давай сначала пару каток, посмотрим на синергию.",
     "Конечно! По рангу мы примерно равны, должно получиться хорошо.",
     "Я за! Добавь меня в дискорд, ник такой же, как здесь.",
@@ -651,7 +651,7 @@ REPLIES = [
 def gen_nick(rnd, used):
     for _ in range(200):
         if rnd.random() < 0.25:
-            nick = rnd.choice(NICK_RU) + rnd.choice(["", "98", "07", "TV", "_RU", "💀", ""])
+            nick = rnd.choice(NICK_RU) + rnd.choice(["", "98", "07", "TV", "_RU", ""])
         else:
             nick = rnd.choice(NICK_A) + rnd.choice(NICK_B) + rnd.choice(NICK_SUFFIX)
         if nick not in used:
@@ -832,7 +832,6 @@ def row_to_listing(row, current_user_id=None, full=False, conn=None):
         age=row["age"],
         region=row["region"],
         region_label=REGION_BY_ID.get(row["region"], {}).get("label", row["region"]),
-        region_flag=REGION_BY_ID.get(row["region"], {}).get("flag", "🌍"),
         platforms=json.loads(row["platforms"] or "[]"),
         languages=json.loads(row["languages"] or "[]"),
         skill=row["skill"],
@@ -843,7 +842,7 @@ def row_to_listing(row, current_user_id=None, full=False, conn=None):
         schedule=json.loads(row["schedule"] or "[]"),
         about=row["about"],
         games=[dict(g, name=GAME_BY_ID[g["game_id"]]["name"], short=GAME_BY_ID[g["game_id"]]["short"],
-                    emoji=GAME_BY_ID[g["game_id"]]["emoji"], genre=GAME_BY_ID[g["game_id"]]["genre"],
+                    genre=GAME_BY_ID[g["game_id"]]["genre"],
                     modes=GAME_BY_ID[g["game_id"]]["modes"]) for g in games if g["game_id"] in GAME_BY_ID],
         rating=row["rating"],
         reviews_count=row["reviews_count"],
@@ -882,12 +881,10 @@ def row_to_squad(row, current_user_id=None, applied_ids=None):
         game_id=row["game_id"],
         game_name=g.get("name", row["game_id"]),
         game_short=g.get("short", row["game_id"]),
-        game_emoji=g.get("emoji", "🎮"),
         mode=row["mode"],
         mode_label=MODE_LABELS.get(row["mode"], row["mode"]),
         region=row["region"],
         region_label=REGION_BY_ID.get(row["region"], {}).get("label", row["region"]),
-        region_flag=REGION_BY_ID.get(row["region"], {}).get("flag", "🌍"),
         language=row["language"],
         size=row["size"],
         filled=row["filled"],
@@ -1353,7 +1350,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(401, {"error": "Нужен вход"})
             unread = unread_count(conn, uid)
             payload = dict(
-                title="SQUADUP на связи 🔔",
+                title="SQUADUP на связи",
                 body="Уведомления работают — мы позовём тебя, когда найдётся тиммейт.",
                 url="/?view=chats", badge=unread, tag="squadup-test",
             )
@@ -1383,7 +1380,7 @@ class Handler(BaseHTTPRequestHandler):
                 conn2 = db_connect()
                 try:
                     push_to_user(conn2, uid, dict(
-                        title="SQUADUP ⚡", body=text, url="/?view=search",
+                        title="SQUADUP", body=text, url="/?view=search",
                         badge=unread_count(conn2, uid), tag="squadup-demo"))
                 finally:
                     conn2.close()
@@ -1712,7 +1709,7 @@ class Handler(BaseHTTPRequestHandler):
             conn.commit()
             if peer_uid:
                 push_async(peer_uid, dict(
-                    title="Новое сообщение 🎮",
+                    title="Новое сообщение",
                     body=f"{user['nickname']}: {text[:120]}", url="/?view=chats",
                     tag=f"chat-{chat_id}", badge=unread_count(conn, peer_uid)))
             return self._send(200, dict(ok=True, chat_id=chat_id, peer_nick=listing["nick"]))
@@ -1738,7 +1735,7 @@ class Handler(BaseHTTPRequestHandler):
                     gd = json.loads(listing["games"])
                     if gd and gd[0]["game_id"] in GAME_BY_ID:
                         gg = GAME_BY_ID[gd[0]["game_id"]]
-                        first_game = dict(emoji=gg["emoji"], short=gg["short"])
+                        first_game = dict(short=gg["short"])
                         game_id = gg["id"]
                 # роли сообщений клиенту: 'me' — это я
                 last_sender = None
@@ -1804,7 +1801,7 @@ class Handler(BaseHTTPRequestHandler):
                 # уведомляем собеседника, если это реальный аккаунт
                 if peer_uid:
                     push_async(peer_uid, dict(
-                        title=f"{user['nickname']} написал 💬", body=text[:140],
+                        title=f"{user['nickname']} написал", body=text[:140],
                         url="/?view=chats", badge=unread_count(conn, peer_uid), tag=f"chat-{chat_id}"))
                 return self._send(200, dict(ok=True, id=cur.lastrowid))
 
@@ -1843,7 +1840,7 @@ class Handler(BaseHTTPRequestHandler):
             conn.execute("UPDATE chats SET updated_at = ?, unread = unread + 1 WHERE id = ?", (now_iso(), chat_id))
             conn.commit()
             push_async(uid, dict(
-                title=f"{chat['peer_nick']} ответил 💬",
+                title=f"{chat['peer_nick']} ответил",
                 body=text[:140], url="/?view=chats",
                 badge=unread_count(conn, uid), tag=f"chat-{chat_id}"))
             return self._send(200, dict(ok=True))
@@ -1908,7 +1905,7 @@ class Handler(BaseHTTPRequestHandler):
             conn.commit()
             if squad["owner_id"] and squad["owner_id"] != uid:
                 push_async(squad["owner_id"], dict(
-                    title=f"Заявка в сквад «{squad['name']}» 🛡️",
+                    title=f"Заявка в сквад «{squad['name']}»",
                     body=(body.get("message") or "Игрок хочет присоединиться")[:140],
                     url="/?view=squads", tag=f"squad-{squad_id}"))
             return self._send(200, dict(ok=True))
@@ -1958,7 +1955,7 @@ class Handler(BaseHTTPRequestHandler):
         rnd = random.Random(uid)
         rows = conn.execute("SELECT * FROM listings WHERE is_seed = 1 ORDER BY RANDOM() LIMIT 2").fetchall()
         seeds = [
-            ("Привет! Увидел твою анкету — ищу пати на вечер, сыграем?", "Конечно! Я онлайн после 19:00, стучись 🙂"),
+            ("Привет! Увидел твою анкету — ищу пати на вечер, сыграем?", "Конечно! Я онлайн после 19:00, стучись"),
             ("Йо, ты тоже ищешь состав? Может, объединимся?", "Да, отличная идея. Давай начнём с пары каток, посмотрим на синергию."),
         ]
         for idx, row in enumerate(rows):
