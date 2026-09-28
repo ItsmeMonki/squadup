@@ -84,6 +84,9 @@ docker compose up --build      # → http://localhost:8000
 
 ### Выложить в интернет (публичная ссылка + том для базы)
 
+> 🚀 **Самый простой путь — [QUICKSTART.md](QUICKSTART.md)**: пошаговая инструкция «GitHub → Render»
+> без опыта и без карты, ~10 минут. Результат — постоянная ссылка вида `https://squadup-xxxx.onrender.com`.
+
 В репозитории лежат готовые `Dockerfile`, `render.yaml`, `railway.toml`, `docker-compose.yml`, а пошаговая инструкция для Railway, Render, VPS и Fly.io — в **[DEPLOY.md](DEPLOY.md)**. Health-check: `GET /healthz`.
 
 ### Вход через Discord (необязательно)
