@@ -632,7 +632,7 @@
  <div class="section-head">
  <div>
  <h2 class="page-title">Чаты</h2>
- <div class="page-sub">Диалоги с игроками. Сообщения живых людей приходят мгновенно, ответ появляется сам; демо-анкеты (с меткой <span class="tag">демо</span>) отвечают заготовленными фразами.</div>
+ <div class="page-sub">Диалоги с игроками. Ответ собеседника приходит за секунды — даже если приложение закрыто, придёт уведомление.</div>
  </div>
  </div>
  <div class="chat-shell">
@@ -682,6 +682,7 @@
  Смена пароля завершает сессии на других устройствах.</p>
  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
  <button class="btn sm" onclick="openPasswordChange()">Сменить пароль</button>
+ <button class="btn sm ghost" onclick="shareApp()">Позвать друзей</button>
  </div>
  </div>
 
@@ -886,7 +887,7 @@ function requireLogin() {
  <input class="inp" id="loginPass" type="password" placeholder="Не короче 6 символов" autocomplete="current-password">
  <div id="loginErr" style="color:var(--acc-3);font-size:13px;margin-top:10px"></div>
  <p class="hint" style="margin-bottom:0">Пароль хранится только в виде необратимого хеша — восстановить его нельзя,
- но можно сменить в «Моей анкете». Вход через Discord и Steam тоже доступен.</p>
+ но можно сменить в «Моей анкете».</p>
  ${discordBlock}
  </div>
  <div class="modal-foot"><button class="btn primary" id="authSubmit" onclick="doLogin()">Создать аккаунт</button></div>
@@ -908,7 +909,7 @@ function requireLogin() {
  setTimeout(() => { const i = $('#loginNick'); if (i) i.focus(); }, 60);
 }
 
-/* шаг «придумай пароль» для аккаунтов без пароля (демо-аккаунты и старые записи) */
+/* шаг «придумай пароль» — для аккаунтов, созданных входом через Discord или Steam */
 function askPasswordSetup(setupToken, nick) {
  openModal(`
  <div class="modal-head"><h3>Придумай пароль</h3></div>
@@ -1040,8 +1041,16 @@ function renderAccounts() {
  </div>`;
  }
 }
-function linkDiscord() {
- location.href = '/api/auth/discord/login?link=' + encodeURIComponent(state.token || '');
+async function linkDiscord() {
+ const btn = event && event.currentTarget;
+ if (btn) { btn.disabled = true; btn.textContent = 'Открываем Discord...'; }
+ try {
+ const r = await api('/api/discord/link-start', { method: 'POST' });
+ location.href = '/api/auth/discord/login?state=' + encodeURIComponent(r.state);
+ } catch (e) {
+ if (btn) { btn.disabled = false; btn.textContent = 'Привязать Discord'; }
+ toast(esc(e.message), 'err');
+ }
 }
 async function unlinkDiscord() {
  try {
@@ -1088,10 +1097,19 @@ function renderSteamRow() {
  </div>`;
  }
 }
-function linkSteam() {
+async function linkSteam() {
  if (!state.token) return requireLogin();
+ const btn = event && event.currentTarget;
+ if (btn) { btn.disabled = true; btn.textContent = 'Открываем Steam...'; }
+ try {
+ // билет привязки: обычной ссылкой токен входа не передать, а заголовок у навигации отсутствует
+ const r = await api('/api/steam/link-start', { method: 'POST' });
  // уходим на steamcommunity.com: наш сайт пароль не запрашивает и не получает
- location.href = '/api/auth/steam/login';
+ location.href = '/api/auth/steam/login?state=' + encodeURIComponent(r.state);
+ } catch (e) {
+ if (btn) { btn.disabled = false; btn.textContent = 'Привязать Steam'; }
+ toast(esc(e.message), 'err');
+ }
 }
 function steamHowto() {
  openModal(`
@@ -1843,6 +1861,19 @@ function currentFilters() {
  p.set('exclude_me', '1');
  return p;
 }
+async function shareApp() {
+ const url = location.origin;
+ const text = 'Ищу тиммейтов в SQUADUP — заполняй анкету и добавляйся';
+ try {
+ if (navigator.share) { await navigator.share({ title: 'SQUADUP', text: text, url: url }); return; }
+ await navigator.clipboard.writeText(url);
+ toast('Ссылка скопирована — отправь её друзьям', 'ok');
+ } catch (e) {
+ if (e && e.name === 'AbortError') return;  // человек закрыл окно «поделиться»
+ prompt('Скопируй ссылку:', url);
+ }
+}
+
 function resetFilters() {
  ['#fq', '#fgame', '#fplatform', '#fregion', '#flang', '#fskill', '#fvibe'].forEach(s => $(s).value = '');
  $('#fsort').value = 'rating';
@@ -1878,11 +1909,25 @@ function renderCards(data) {
  const word = plural(items.length, ['анкета', 'анкеты', 'анкет']);
  $('#resultsCount').innerHTML = `Найдено <b>${items.length}</b> ${word}`;
  $('#resultsHint').textContent = items.length ? 'Кнопка «Позвать» откроет чат с игроком' : '';
- if (!items.length) {
- $('#cards').innerHTML = `<div class="empty" style="grid-column:1/-1">Под такие фильтры никто не подошёл.<br>Попробуй ослабить условия или <button class="btn sm ghost" onclick="resetFilters()">сбросить фильтры</button></div>`;
+ const onlyMine = items.length > 0 && items.every(p => p.is_me);
+ if (!items.length || onlyMine) {
+ const noFilters = !($('#fq').value || $('#fgame').value || $('#fplatform').value || $('#fregion').value
+ || $('#flang').value || $('#fskill').value || $('#fvibe').value);
+ const msg = (noFilters || onlyMine)
+ ? 'Пока в поиске только ты. Позови друзей — как только они заполнят анкеты, появятся здесь.'
+ : 'Под такие фильтры никто не подошёл.<br>Попробуй ослабить условия или <button class="btn sm ghost" onclick="resetFilters()">сбросить фильтры</button>';
+ const cards = items.map(p => cardHtml(p)).join('');   // своя анкета остаётся на месте
+ $('#cards').innerHTML = cards + `<article class="card" style="display:flex;align-items:center;justify-content:center;text-align:center">
+ <div><div style="font-size:15px;line-height:1.5">${msg}</div>
+ <button class="btn primary" style="margin-top:14px" onclick="shareApp()">Позвать друзей</button></div></article>`;
  return;
  }
- $('#cards').innerHTML = items.map(p => `
+ $('#cards').innerHTML = items.map(cardHtml).join('');
+}
+
+/* карточка игрока — вынесена отдельно: её же показывает пустой поиск */
+function cardHtml(p) {
+ return `
  <article class="card ${p.is_me ? 'mine' : ''}">
  <div class="card-top">
  <div class="av-wrap">
@@ -1918,7 +1963,7 @@ function renderCards(data) {
  <button class="btn sm primary" onclick="openInvite(${p.id})">Позвать</button>`}
  </div>
  </div>
- </article>`).join('');
+ </article>`;
 }
 function plural(n, f) {
  const m10 = n % 10, m100 = n % 100;
@@ -2140,7 +2185,7 @@ async function loadChats() {
  <div class="chat-item ${state.activeChat === c.id ? 'active' : ''}" onclick="openChat(${c.id})">
  <div class="avatar a-40" style="${avatarStyle(c.peer_nick)}">${esc(initials(c.peer_nick))}</div>
  <div class="ci">
- <b>${esc(c.peer_nick)}${c.peer_user_id ? '<span class="tag coop" title="Реальный игрок">игрок</span>' : '<span class="tag" title="Демо-анкета: отвечает автоматически">демо</span>'}${c.game ? `<span class="gchip sm">${esc(c.game.short)}</span>` : ''}</b>
+ <b>${esc(c.peer_nick)}${c.peer_user_id ? '<span class="tag coop" title="Зарегистрированный игрок">игрок</span>' : '<span class="tag" title="Гостевая анкета без аккаунта">гость</span>'}${c.game ? `<span class="gchip sm">${esc(c.game.short)}</span>` : ''}</b>
  <p>${c.last_sender === 'me' ? 'Вы:' : ''}${esc(c.last_message)}</p>
  </div>
  ${c.unread ? `<div class="unread">${c.unread}</div>` : `<span class="hint">${timeAgo(c.updated_at)}</span>`}
@@ -2163,7 +2208,7 @@ async function openChat(id) {
  ${m.listing_id ? `<button class="btn sm ghost" onclick="openProfile(${m.listing_id})">Профиль</button>` : ''}
  ${(state.chatMeta.get(id) || {}).peer_user_id
  ? `<button class="btn sm ghost" onclick="blockChatUser(${id})">Заблокировать</button>`
- : `<span class="hint">демо-игрок</span>`}
+ : `<span class="hint">гостевая анкета</span>`}
  </div>
  <div class="msgs" id="msgs"></div>
  <div class="composer">
@@ -2219,7 +2264,7 @@ async function sendMessage() {
  const meta = state.chatMeta.get(id) || {};
  loadChats();
  if (meta.peer_user_id) return; // живой собеседник ответит сам — ждём его (опрос раз в 4 с)
- // демо-собеседник: показываем «печатает…» и просим сервер сгенерировать ответ
+ // гостевая анкета: показываем «печатает…» и просим сервер сгенерировать ответ
  const box = $('#msgs');
  if (!box) return;
  const typing = document.createElement('div');
@@ -2467,8 +2512,10 @@ async function init() {
  const discordLinked = url.searchParams.get('discord_linked');
  const discordWelcome = url.searchParams.get('discord_welcome');
  const startView = url.searchParams.get('view');
+ const steamLinked0 = url.searchParams.get('steam_linked');
+ const steamError0 = url.searchParams.get('steam_error');
  if (urlToken) { state.token = urlToken; localStorage.setItem('squadup_token', urlToken); }
- if (urlToken || discordErr || discordLinked || discordWelcome || startView) {
+ if (urlToken || discordErr || discordLinked || discordWelcome || startView || steamLinked0 || steamError0) {
  history.replaceState(null, '', '/');
  }
 
@@ -2512,15 +2559,33 @@ async function init() {
  };
  if (steamError) toast(esc(STEAM_ERRORS[steamError] || 'Не удалось привязать Steam'), 'err');
  if (discordLinked) toast('Discord привязан к анкете', 'ok');
- if (urlToken && discordWelcome) toast('Вход через Discord выполнен Демо-анкеты уже ждут.', 'ok');
- if (discordErr) toast('Не удалось войти через Discord (' + esc(discordErr) +')', 'err');
+ if (urlToken && discordWelcome) toast('Вход через Discord выполнен', 'ok');
+ if (discordErr) {
+ const DISCORD_ERRORS = {
+ not_configured: 'Вход через Discord выключен: на сервере не заданы DISCORD_CLIENT_ID и DISCORD_CLIENT_SECRET',
+ state: 'Ссылка входа устарела — попробуй ещё раз',
+ exchange: 'Discord не подтвердил вход — попробуй ещё раз',
+ profile: 'Discord не отдал профиль — попробуй ещё раз',
+ already_linked: 'Этот Discord уже привязан к другой анкете',
+ };
+ toast(esc(DISCORD_ERRORS[discordErr] || 'Не удалось войти через Discord'), 'err');
+ }
  if (startView && ['search', 'squads', 'chats', 'profile'].includes(startView)) go(startView);
+
+ // вход спрашиваем до всего необязательного: форма должна появиться, даже если
+ // браузер не даёт service worker (приватный режим, старые движки)
+ if (!state.token) requireLogin();
 
  // 4) офлайн-оболочка, уведомления и фоновая работа
  if ('serviceWorker' in navigator) {
  try {
  const reg = await navigator.serviceWorker.register('/sw.js');
- await navigator.serviceWorker.ready;
+ // ждём готовности не дольше 3 секунд: иначе на «медленных» браузерах
+ // интерфейс замирал в ожидании
+ await Promise.race([
+ navigator.serviceWorker.ready,
+ new Promise(resolve => setTimeout(resolve, 3000)),
+ ]);
  sendTokenToSW();
  loadOutbox();
  flushOutbox();
@@ -2544,8 +2609,6 @@ async function init() {
  await loadPushState();
  } catch (e) { /* офлайн-режим не критичен для работы */ }
  }
-
- if (!state.token) requireLogin();
 }
 init();
 </script>

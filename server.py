@@ -25,6 +25,9 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 # Путь к базе можно переопределить (в облаке указываем том, например /data/squadup.db).
 DB_PATH = os.environ.get("DB_PATH") or os.path.join(BASE_DIR, "data.db")
 PORT = int(os.environ.get("PORT", "8000"))
+# Демо-данные (88 анкет и 14 сквадов) — только если явно попросили: SQUADUP_DEMO=1.
+# По умолчанию база пустая: приложение рассчитано на реальных игроков.
+DEMO_DATA = os.environ.get("SQUADUP_DEMO", "").strip().lower() in ("1", "true", "yes", "on")
 
 DB_LOCK = threading.Lock()
 
@@ -908,6 +911,44 @@ def gen_seed_squads(count=14):
     return squads
 
 
+def purge_demo_data(conn):
+    """Убирает демонстрационные записи, если демо-режим выключен.
+
+    Демо-анкеты и скводы легко отличить от настоящих: у них нет владельца
+    (user_id / owner_id пусты), а у анкет стоит пометка is_seed. Вместе с ними
+    удаляются диалоги «для приветствия» — иначе в чатах остались бы сообщения
+    от игроков, которых на самом деле нет. Вызывается внутри init_db (замок уже взят).
+    """
+    seed_ids = [r["id"] for r in conn.execute(
+        "SELECT id FROM listings WHERE is_seed = 1 AND user_id IS NULL")]
+    squads = conn.execute("DELETE FROM squads WHERE owner_id IS NULL").rowcount
+    chats = 0
+    if seed_ids:
+        marks = ",".join("?" * len(seed_ids))
+        chats = conn.execute(f"DELETE FROM chats WHERE listing_id IN ({marks})", seed_ids).rowcount
+        conn.execute(f"DELETE FROM listings WHERE id IN ({marks})", seed_ids)
+    # аккаунты, созданные старым демо-входом «по одному нику»: ни пароля, ни Discord, ни Steam.
+    # Войти в них больше нельзя (пароль обязателен), а ник остаётся занятым — поэтому убираем.
+    ghosts = [r["id"] for r in conn.execute(
+        "SELECT id FROM users WHERE password_hash IS NULL AND discord_id IS NULL AND steam_id IS NULL")]
+    if ghosts:
+        marks = ",".join("?" * len(ghosts))
+        conn.execute(f"DELETE FROM listings WHERE user_id IN ({marks})", ghosts)
+        conn.execute(f"DELETE FROM chats WHERE user_id IN ({marks}) OR peer_user_id IN ({marks})", ghosts + ghosts)
+        for table in ("blocks", "applications", "push_subscriptions"):
+            try:
+                conn.execute(f"DELETE FROM {table} WHERE user_id IN ({marks})", ghosts)
+            except Exception:
+                pass
+        try:
+            conn.execute(f"DELETE FROM reports WHERE reporter_id IN ({marks})", ghosts)
+        except Exception:
+            pass
+        conn.execute(f"DELETE FROM users WHERE id IN ({marks})", ghosts)
+    messages = conn.execute("DELETE FROM messages WHERE chat_id NOT IN (SELECT id FROM chats)").rowcount
+    return dict(listings=len(seed_ids), squads=squads, chats=chats, users=len(ghosts), messages=messages)
+
+
 def init_db():
     fresh = not os.path.exists(DB_PATH)
     parent = os.path.dirname(os.path.abspath(DB_PATH))
@@ -917,8 +958,8 @@ def init_db():
     with DB_LOCK:
         conn.executescript(SCHEMA)
         migrate(conn)
-        cur = conn.execute("SELECT COUNT(*) AS c FROM listings WHERE is_seed = 1")
-        if cur.fetchone()["c"] == 0:
+        cur = conn.execute("SELECT COUNT(*) AS c FROM listings WHERE is_seed = 1 AND user_id IS NULL")
+        if DEMO_DATA and cur.fetchone()["c"] == 0:
             for l in gen_seed_listings():
                 conn.execute(
                     """INSERT INTO listings (user_id,nick,age,region,platforms,languages,skill,mic,vibe,schedule,
@@ -931,8 +972,8 @@ def init_db():
                      l["online"], l["verified"], l["last_seen"], json.dumps(l["reviews"], ensure_ascii=False),
                      l["is_seed"], l["created_at"]),
                 )
-        cur = conn.execute("SELECT COUNT(*) AS c FROM squads")
-        if cur.fetchone()["c"] == 0:
+        cur = conn.execute("SELECT COUNT(*) AS c FROM squads WHERE owner_id IS NULL")
+        if DEMO_DATA and cur.fetchone()["c"] == 0:
             for s in gen_seed_squads():
                 conn.execute(
                     """INSERT INTO squads (name,tag,game_id,mode,region,language,size,filled,need,min_rank,mic,schedule,
@@ -941,10 +982,14 @@ def init_db():
                      json.dumps(s["need"], ensure_ascii=False), s["min_rank"], s["mic"], s["schedule"], s["about"],
                      s["captain"], s["owner_id"], s["created_at"]),
                 )
+        if not DEMO_DATA:
+            gone = purge_demo_data(conn)
+            if any(gone.values()):
+                print("[db] демо-записи убраны:", gone, flush=True)
         conn.commit()
     conn.close()
     if fresh:
-        print("[db] создана новая база с демо-данными:", DB_PATH)
+        print("[db] база готова:", DB_PATH, "| демо-данные:", "включены" if DEMO_DATA else "выключены")
 
 
 # ----------------------------------------------------------------------------
@@ -1201,8 +1246,9 @@ class Handler(BaseHTTPRequestHandler):
         # --- служебное ---
         if path == "/api/config" and method == "GET":
             return self._send(200, dict(discord_enabled=DISCORD_ENABLED,
+                                        steam_enabled=True,
                                         push_enabled=PUSH_ENABLED,
-                                        app_name="SQUADUP", version="1.5"))
+                                        app_name="SQUADUP", version="1.6"))
 
         if path == "/api/games" and method == "GET":
             return self._send(200, dict(
@@ -1641,19 +1687,32 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, dict(ok=True, delay=delay, devices=devices))
 
         # --- Discord OAuth ---
+        if path == "/api/discord/link-start" and method == "POST":
+            if not DISCORD_ENABLED:
+                return self._send(403, {"error": "Вход через Discord не настроен на сервере"})
+            if not user:
+                return self._send(401, {"error": "Сначала войди в SQUADUP"})
+            prune_oauth_states()
+            state = uuid.uuid4().hex
+            with OAUTH_LOCK:
+                OAUTH_STATES[state] = dict(created=datetime.now(timezone.utc), link_uid=uid, kind="discord")
+            return self._send(200, dict(state=state))
+
         if path == "/api/auth/discord/login" and method == "GET":
             if not DISCORD_ENABLED:
                 return self._redirect("/?discord_error=not_configured")
-            prune_oauth_states()
-            link_uid = None
-            link_token = (query.get("link") or [""])[0]
-            if link_token:
-                linked = conn.execute("SELECT id FROM users WHERE token = ?", (link_token,)).fetchone()
-                if linked:
-                    link_uid = linked["id"]
-            state = uuid.uuid4().hex
+            state = (query.get("state") or [""])[0]
             with OAUTH_LOCK:
-                OAUTH_STATES[state] = dict(created=datetime.now(timezone.utc), link_uid=link_uid)
+                ticket = OAUTH_STATES.get(state) if state else None
+            if ticket and ticket.get("kind") == "discord" and ticket.get("link_uid"):
+                link_uid = ticket["link_uid"]  # билет на привязку к текущей анкете
+            else:
+                # обычный вход через Discord: аккаунт создаётся или находится по discord_id
+                link_uid = None
+                prune_oauth_states()
+                state = uuid.uuid4().hex
+                with OAUTH_LOCK:
+                    OAUTH_STATES[state] = dict(created=datetime.now(timezone.utc), link_uid=None, kind="discord")
             redirect_uri = DISCORD_REDIRECT_URI or (self.base_url() + "/api/auth/discord/callback")
             import urllib.parse
             qs = urllib.parse.urlencode(dict(response_type="code", client_id=DISCORD_CLIENT_ID,
@@ -1717,13 +1776,32 @@ class Handler(BaseHTTPRequestHandler):
             return self._redirect("/?token=" + token + "&discord_welcome=1")
 
         # --- Steam: официальный OpenID 2.0, пароль пользователь вводит только у Steam ---
-        if path == "/api/auth/steam/login" and method == "GET":
+        # Билет на привязку Steam. Кнопка «Привязать Steam» — обычная ссылка в браузере,
+        # а токен входа передаётся заголовком, которого у навигации нет. Поэтому сначала
+        # клиент берёт здесь одноразовый билет (10 минут), и только потом уходит на Steam.
+        if path == "/api/steam/link-start" and method == "POST":
             if not user:
-                return self._redirect("/?steam_error=login_required")
+                return self._send(401, {"error": "Сначала войди в SQUADUP, потом привязывай Steam"})
             prune_oauth_states()
             state = uuid.uuid4().hex
             with OAUTH_LOCK:
                 OAUTH_STATES[state] = dict(created=datetime.now(timezone.utc), link_uid=uid, kind="steam")
+            return self._send(200, dict(state=state))
+
+        if path == "/api/auth/steam/login" and method == "GET":
+            state = (query.get("state") or [""])[0]
+            with OAUTH_LOCK:
+                ticket = OAUTH_STATES.get(state) if state else None
+            if ticket and ticket.get("kind") == "steam" and ticket.get("link_uid"):
+                pass  # билет выдан по токену в /api/steam/link-start
+            elif user:
+                # запасной путь: запрос пришёл с заголовком X-Token (скрипты, старые клиенты)
+                prune_oauth_states()
+                state = uuid.uuid4().hex
+                with OAUTH_LOCK:
+                    OAUTH_STATES[state] = dict(created=datetime.now(timezone.utc), link_uid=uid, kind="steam")
+            else:
+                return self._redirect("/?steam_error=login_required")
             base = self.base_url()
             import urllib.parse
             qs = urllib.parse.urlencode({
@@ -2301,6 +2379,8 @@ class Handler(BaseHTTPRequestHandler):
         return out
 
     def seed_welcome_chats(self, conn, uid):
+        if not DEMO_DATA:
+            return  # с реальными игроками никаких выдуманных диалогов
         """При первом входе создаём пару живых диалогов, чтобы чат не был пустым."""
         rnd = random.Random(uid)
         rows = conn.execute("SELECT * FROM listings WHERE is_seed = 1 ORDER BY RANDOM() LIMIT 2").fetchall()

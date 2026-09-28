@@ -13,8 +13,8 @@
   "startUrl": "/",
   "iconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-512.png",
   "maskableIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-maskable-512.png",
-  "appVersionName": "1.5.0",
-  "appVersionCode": 4,
+  "appVersionName": "1.6.0",
+  "appVersionCode": 5,
   "shortcuts": [
     { "name": "Ищу сейчас", "shortName": "Ищу сейчас", "url": "/?view=search", "chosenIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-192.png" },
     { "name": "Сквады", "shortName": "Сквады", "url": "/?view=squads", "chosenIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-192.png" },
