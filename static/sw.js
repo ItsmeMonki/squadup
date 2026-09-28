@@ -9,7 +9,7 @@
    Данные всегда берутся из сети: кэшируются только иконки и офлайн-оболочка.
 */
 
-const CACHE = 'squadup-v3';
+const CACHE = 'squadup-v4';
 const ASSETS = [
   '/',
   '/manifest.webmanifest',
