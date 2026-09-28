@@ -654,6 +654,7 @@
  <div class="panel-box" id="accountsBox">
  <h3 style="font-size:15.5px;margin-bottom:12px">Привязанные аккаунты</h3>
  <div id="discordRow"></div>
+ <div id="steamRow" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)"></div>
  </div>
 
  <div class="panel-box">
@@ -933,6 +934,96 @@ async function unlinkDiscord() {
  await bootstrapUser();
  } catch (e) { toast(esc(e.message), 'err'); }
 }
+function renderSteamRow() {
+ const row = $('#steamRow'); if (!row || !state.me) return;
+ const st = state.me.steam || { linked: false };
+ const badge = `<span class="avatar a-40" style="background:linear-gradient(135deg,#1b2838,#66c0f4);color:#fff;font-size:13px">ST</span>`;
+ if (st.linked) {
+ row.innerHTML = `
+ <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+ ${st.avatar ? `<img src="${esc(st.avatar)}" alt="" style="width:40px;height:40px;border-radius:50%;object-fit:cover" referrerpolicy="no-referrer">` : badge}
+ <div style="flex:1;min-width:180px">
+ <b>Steam — привязан</b>
+ <div class="hint">${esc(st.nick || 'профиль подключён')} · SteamID подтверждён${st.profile_loaded ? '' : ' (Steam не отдал данные профиля)'}</div>
+ </div>
+ ${st.profile_loaded ? '' : `<button class="btn sm ghost" onclick="steamRefresh()">Обновить данные</button>`}
+ <button class="btn sm ghost" onclick="steamVisibility(${st.public ? 'false' : 'true'})">
+ ${st.public ? 'Скрыть из анкеты' : 'Показывать в анкете'}
+ </button>
+ <a class="btn sm ghost" href="${esc(st.profile_url)}" target="_blank" rel="noopener noreferrer">Профиль в Steam</a>
+ <button class="btn sm ghost" onclick="unlinkSteam()">Отвязать</button>
+ </div>
+ <div class="hint" style="margin-top:8px">
+ ${st.public
+ ? 'Другие игроки видят ник Steam и ссылку на профиль — так проще добавиться в друзья. Сам SteamID и данные входа не показываются.'
+ : 'Steam скрыт: другие игроки не видят ни ник, ни ссылку. Показ можно включить в любой момент.'}
+ </div>`;
+ } else {
+ row.innerHTML = `
+ <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+ ${badge}
+ <div style="flex:1;min-width:180px">
+ <b>Steam не привязан</b>
+ <div class="hint">Подтверди аккаунт через официальный вход Steam: пароль вводится только на сайте Steam.</div>
+ </div>
+ <button class="btn sm" style="background:#1b2838;border-color:rgba(102,192,244,.5);color:#c6e6ff"
+ onclick="steamHowto()">Как это безопасно?</button>
+ <button class="btn sm primary" onclick="linkSteam()">Привязать Steam</button>
+ </div>`;
+ }
+}
+function linkSteam() {
+ if (!state.token) return requireLogin();
+ // уходим на steamcommunity.com: наш сайт пароль не запрашивает и не получает
+ location.href = '/api/auth/steam/login';
+}
+function steamHowto() {
+ openModal(`
+ <div class="modal-head"><h3>Привязка Steam — как это работает</h3>
+ <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+ <div class="modal-body">
+ <p style="margin-top:0">Мы используем официальный протокол Steam OpenID 2.0 — тот же, что
+ применяют сайты игровых сообществ. Пароль от Steam ты вводишь <b>только на сайте
+ steamcommunity.com</b>.</p>
+ <ul style="color:var(--muted);font-size:14px;padding-left:20px;line-height:1.7;margin:12px 0">
+ <li><b>Мы не получаем пароль.</b> Наш сервер не просит и не принимает его ни в одной форме.</li>
+ <li><b>Мы не получаем доступ к аккаунту.</b> Инвентарь, покупки и список друзей недоступны.</li>
+ <li><b>Мы не запрашиваем код Steam Guard.</b> Коды подтверждения нигде не вводятся.</li>
+ <li><b>Подпись ответа проверяется на нашем сервере</b> отдельным запросом к серверам Steam — подделать ответ нельзя.</li>
+ <li><b>Храним минимум:</b> публичный SteamID и то, что видно в публичном профиле (ник, аватар).</li>
+ <li><b>Ты управляешь показом:</b> ник и ссылку видят другие игроки, только пока ты это разрешаешь.</li>
+ <li><b>Отвязка в один клик.</b> После отвязки данные Steam удаляются из анкеты, а при удалении аккаунта — полностью.</li>
+ </ul>
+ <p class="hint">Ни SQUADUP, ни Steam никогда не просят пароль в чатах и по почте. Если кто-то просит
+ пароль или код Steam Guard «для проверки» — это мошенник.</p>
+ </div>
+ <div class="modal-foot">
+ <button class="btn ghost" onclick="closeModal()">Позже</button>
+ <button class="btn primary" onclick="closeModal();linkSteam()">Продолжить в Steam</button>
+ </div>`);
+}
+async function steamRefresh() {
+ try {
+ const r = await api('/api/steam/refresh', { method: 'POST' });
+ if (r.ok) { toast('Данные Steam обновлены: ' + esc(r.nick || 'ник получен'), 'ok'); await bootstrapUser(); }
+ else toast(esc(r.message || 'Steam не отдал профиль'), 'err');
+ } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function unlinkSteam() {
+ try {
+ await api('/api/unlink-steam', { method: 'POST' });
+ toast('Steam отвязан: данные Steam удалены из анкеты', 'ok');
+ await bootstrapUser();
+ } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function steamVisibility(publicNow) {
+ try {
+ await api('/api/steam/visibility', { method: 'POST', body: { public: publicNow } });
+ toast(publicNow ? 'Ник Steam снова виден в анкете' : 'Ник и ссылка Steam скрыты от других', 'ok');
+ await bootstrapUser();
+ } catch (e) { toast(esc(e.message), 'err'); }
+}
+
 async function doLogin() {
  const nick = $('#loginNick').value.trim();
  if (!nick) { $('#loginErr').textContent = 'Введите ник'; return; }
@@ -1542,6 +1633,12 @@ async function openProfile(id) {
  <span>${p.online ? 'онлайн сейчас' : 'был(а)' + timeAgo(p.last_seen)}</span>
  <span>${p.mic ? 'микрофон есть' : 'без микрофона'}</span>
  </div>
+ ${p.steam_nick || p.steam_url ? `
+ <div class="copy-tag" style="margin-top:10px">
+ <span>${esc(p.steam_nick || 'Steam')}</span>
+ ${p.steam_url ? `<a href="${esc(p.steam_url)}" target="_blank" rel="noopener noreferrer"
+ style="color:var(--acc-2);font-weight:600">профиль в Steam</a>` : ''}
+ </div>` : ''}
  <div class="topic" style="margin-top:10px">
  <span class="tag">${esc(p.skill_label)}</span>
  <span class="tag">${esc(p.vibe_label)}</span>
@@ -2034,6 +2131,7 @@ async function bootstrapUser() {
  $('#meAvatar').textContent = initials(state.me.nickname);
  $('#meStatus').textContent = state.me.discord && state.me.discord.linked ? 'Discord' : 'онлайн';
  renderAccounts();
+ renderSteamRow();
  $('#unreadBadge').style.display = state.me.unread ? '' : 'none';
  $('#unreadBadge').textContent = state.me.unread || 0;
  fillListingForm(state.me.listing);
@@ -2078,6 +2176,19 @@ async function init() {
  }, 45000);
 
  // 3) сообщения о результате OAuth и ярлыки PWA
+ const steamLinked = url.searchParams.get('steam_linked');
+ const steamError = url.searchParams.get('steam_error');
+ if (steamLinked) toast('Steam привязан: SteamID подтверждён', 'ok');
+ const STEAM_ERRORS = {
+ login_required: 'Сначала войди в SQUADUP, потом привязывай Steam',
+ state: 'Ссылка привязки устарела или уже использована — попробуй привязать заново',
+ cancelled: 'Привязка Steam отменена',
+ verify: 'Не удалось проверить ответ Steam — попробуй ещё раз',
+ invalid: 'Steam не подтвердил вход. Попробуй привязать заново',
+ already_linked: 'Этот Steam-аккаунт уже привязан к другой анкете',
+ profile: 'Steam вернул некорректный профиль — попробуй ещё раз',
+ };
+ if (steamError) toast(esc(STEAM_ERRORS[steamError] || 'Не удалось привязать Steam'), 'err');
  if (discordLinked) toast('Discord привязан к анкете', 'ok');
  if (urlToken && discordWelcome) toast('Вход через Discord выполнен Демо-анкеты уже ждут.', 'ok');
  if (discordErr) toast('Не удалось войти через Discord (' + esc(discordErr) +')', 'err');

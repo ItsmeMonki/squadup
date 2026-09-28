@@ -201,6 +201,15 @@ DISCORD_CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", "").strip()
 DISCORD_REDIRECT_URI = os.environ.get("DISCORD_REDIRECT_URI", "").strip()  # если пусто — соберём из запроса
 DISCORD_ENABLED = bool(DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET)
 
+# --- Steam: вход только через официальный OpenID 2.0 (steamcommunity.com) ---
+# Пароль Steam пользователь вводит только на сайте Steam: мы его не видим и не храним.
+# Ключ Steam Web API не нужен: ник и аватар берём из публичного XML-профиля.
+STEAM_OPENID_ENDPOINT = os.environ.get("STEAM_OPENID_ENDPOINT",
+                                       "https://steamcommunity.com/openid/login").strip()
+STEAM_PROFILE_XML = os.environ.get("STEAM_PROFILE_XML",
+                                   "https://steamcommunity.com/profiles/{}/?xml=1").strip()
+STEAM_CLAIMED_ID_RE = re.compile(r"^https://steamcommunity\.com/openid/id/(\d{17})$")
+
 OAUTH_STATES = {}          # state -> {"created": datetime, "link_uid": uid | None}
 OAUTH_LOCK = threading.Lock()
 
@@ -541,6 +550,19 @@ def migrate(conn):
         conn.execute("ALTER TABLE users ADD COLUMN discord_id TEXT")
     if "discord_username" not in users_cols:
         conn.execute("ALTER TABLE users ADD COLUMN discord_username TEXT")
+    if "steam_id" not in users_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN steam_id TEXT")
+    if "steam_nick" not in users_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN steam_nick TEXT")
+    if "steam_avatar" not in users_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN steam_avatar TEXT")
+    if "steam_linked_at" not in users_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN steam_linked_at TEXT")
+    if "steam_public" not in users_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN steam_public INTEGER DEFAULT 1")
+    # один Steam-аккаунт — только к одной анкете
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_steam ON users(steam_id) "
+                 "WHERE steam_id IS NOT NULL")
     conn.execute("""CREATE TABLE IF NOT EXISTS player_reviews (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         listing_id INTEGER,
@@ -581,6 +603,51 @@ def http_json(url, data=None, headers=None, form=False, timeout=12):
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         raw = resp.read().decode("utf-8")
     return json.loads(raw) if raw else {}
+
+
+def steam_fetch_profile(steam_id):
+    """Ник и аватар из публичного профиля Steam. Если профиль закрыт, Steam ограничил запросы
+    или сети нет — возвращаем пустые значения: привязка всё равно работает, SteamID подтверждён."""
+    import time as _time
+    import urllib.request
+    xml = None
+    for attempt in (1, 2):
+        try:
+            req = urllib.request.Request(STEAM_PROFILE_XML.format(steam_id),
+                                         headers={"User-Agent": "SQUADUP/1.0"})
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                xml = resp.read().decode("utf-8", "replace")
+            break
+        except Exception as exc:  # noqa: BLE001
+            print(f"[steam] профиль недоступен (попытка {attempt}):", exc, flush=True)
+            if attempt == 1:
+                _time.sleep(1.5)
+    if xml is None:
+        return dict(nick="", avatar="")
+
+    def tag(name):
+        m = re.search(r"<%s><!\[CDATA\[(.*?)\]\]></%s>" % (name, name), xml, re.S)
+        if not m:
+            m = re.search(r"<%s>(.*?)</%s>" % (name, name), xml, re.S)
+        return (m.group(1).strip() if m else "")
+
+    return dict(nick=tag("steamID")[:32], avatar=tag("avatarMedium")[:300])
+
+
+def steam_verify_openid(params):
+    """Проверка ответа Steam на НАШЕМ сервере: отправляем полученные параметры обратно
+    в Steam с openid.mode=check_authentication. Доверять параметрам из адресной строки нельзя."""
+    import urllib.parse
+    import urllib.request
+    data = {k: v for k, v in params.items() if k.startswith("openid.")}
+    data["openid.mode"] = "check_authentication"
+    body = urllib.parse.urlencode(data).encode()
+    req = urllib.request.Request(STEAM_OPENID_ENDPOINT, data=body,
+                                 headers={"Content-Type": "application/x-www-form-urlencoded",
+                                          "User-Agent": "SQUADUP/1.0"})
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        text = resp.read().decode("utf-8", "replace")
+    return bool(re.search(r"^is_valid:\s*true\s*$", text, re.M))
 
 
 def prune_oauth_states():
@@ -824,6 +891,14 @@ def init_db():
 def row_to_listing(row, current_user_id=None, full=False, conn=None):
     games = json.loads(row["games"] or "[]")
     keys = row.keys()
+    # Steam показываем только если владелец анкеты разрешил это в настройках
+    steam_nick, steam_url = "", ""
+    if conn is not None and "user_id" in keys and row["user_id"]:
+        su = conn.execute("SELECT steam_id, steam_nick, steam_public FROM users WHERE id = ?",
+                          (row["user_id"],)).fetchone()
+        if su and su["steam_id"] and (su["steam_public"] is None or su["steam_public"]):
+            steam_nick = su["steam_nick"] or ""
+            steam_url = "https://steamcommunity.com/profiles/" + su["steam_id"]
     looking_at = row["looking_at"] if "looking_at" in keys else None
     is_looking = bool(looking_at and looking_at >= iso_cutoff(LOOKING_WINDOW_MIN))
     out = dict(
@@ -834,6 +909,8 @@ def row_to_listing(row, current_user_id=None, full=False, conn=None):
         region_label=REGION_BY_ID.get(row["region"], {}).get("label", row["region"]),
         platforms=json.loads(row["platforms"] or "[]"),
         languages=json.loads(row["languages"] or "[]"),
+        steam_nick=steam_nick,
+        steam_url=steam_url,
         skill=row["skill"],
         skill_label=SKILL_LABELS.get(row["skill"], ""),
         mic=row["mic"],
@@ -1463,6 +1540,95 @@ class Handler(BaseHTTPRequestHandler):
                 self.seed_welcome_chats(conn, uid_s)
             return self._redirect("/?token=" + token + "&discord_welcome=1")
 
+        # --- Steam: официальный OpenID 2.0, пароль пользователь вводит только у Steam ---
+        if path == "/api/auth/steam/login" and method == "GET":
+            if not user:
+                return self._redirect("/?steam_error=login_required")
+            prune_oauth_states()
+            state = uuid.uuid4().hex
+            with OAUTH_LOCK:
+                OAUTH_STATES[state] = dict(created=datetime.now(timezone.utc), link_uid=uid, kind="steam")
+            base = self.base_url()
+            import urllib.parse
+            qs = urllib.parse.urlencode({
+                "openid.ns": "http://specs.openid.net/auth/2.0",
+                "openid.mode": "checkid_setup",
+                "openid.return_to": base + "/api/auth/steam/callback?state=" + state,
+                "openid.realm": base,
+                "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
+                "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
+            })
+            return self._redirect(STEAM_OPENID_ENDPOINT + "?" + qs)
+
+        if path == "/api/auth/steam/callback" and method == "GET":
+            state = (query.get("state") or [""])[0]
+            with OAUTH_LOCK:
+                st = OAUTH_STATES.pop(state, None)
+            # state одноразовый и живёт 10 минут: без него нельзя привязать Steam к чужой анкете
+            if not st or st.get("kind") != "steam" or not st.get("link_uid"):
+                return self._redirect("/?steam_error=state")
+            if (query.get("openid.mode") or [""])[0] == "cancel":
+                return self._redirect("/?steam_error=cancelled")
+            params = {k: v[0] for k, v in query.items() if k.startswith("openid.")}
+            if not params.get("openid.claimed_id"):
+                return self._redirect("/?steam_error=cancelled")
+            try:
+                valid = steam_verify_openid(params)
+            except Exception as exc:  # noqa: BLE001
+                print("[steam] проверка подписи не удалась:", exc, flush=True)
+                return self._redirect("/?steam_error=verify")
+            if not valid:
+                return self._redirect("/?steam_error=invalid")
+            m = STEAM_CLAIMED_ID_RE.match(params.get("openid.claimed_id", ""))
+            if not m:
+                return self._redirect("/?steam_error=profile")
+            steam_id = m.group(1)
+            link_uid = st["link_uid"]
+            busy = conn.execute("SELECT id FROM users WHERE steam_id = ? AND id <> ?",
+                                (steam_id, link_uid)).fetchone()
+            if busy:
+                return self._redirect("/?steam_error=already_linked")
+            prof = steam_fetch_profile(steam_id)
+            conn.execute("""UPDATE users SET steam_id = ?, steam_nick = ?, steam_avatar = ?,
+                                           steam_linked_at = ? WHERE id = ?""",
+                         (steam_id, prof["nick"], prof["avatar"], now_iso(), link_uid))
+            conn.commit()
+            return self._redirect("/?steam_linked=1")
+
+        if path == "/api/unlink-steam" and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            conn.execute("""UPDATE users SET steam_id = NULL, steam_nick = NULL, steam_avatar = NULL,
+                                           steam_linked_at = NULL WHERE id = ?""", (uid,))
+            conn.commit()
+            return self._send(200, dict(ok=True))
+
+        if path == "/api/steam/refresh" and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            sid = user["steam_id"] if "steam_id" in user.keys() else None
+            if not sid:
+                return self._send(400, {"error": "Steam не привязан"})
+            prof = steam_fetch_profile(sid)
+            if not prof["nick"] and not prof["avatar"]:
+                return self._send(200, dict(ok=False, nick="", avatar="",
+                                            message="Steam не отдал профиль — обычно это значит, "
+                                                    "что профиль закрыт или Steam ограничил запросы. "
+                                                    "Привязка при этом сохраняется."))
+            conn.execute("UPDATE users SET steam_nick = ?, steam_avatar = ? WHERE id = ?",
+                         (prof["nick"], prof["avatar"], uid))
+            conn.commit()
+            return self._send(200, dict(ok=True, nick=prof["nick"], avatar=prof["avatar"]))
+
+        if path == "/api/steam/visibility" and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            body = self._json_body()
+            public = 1 if body.get("public") else 0
+            conn.execute("UPDATE users SET steam_public = ? WHERE id = ?", (public, uid))
+            conn.commit()
+            return self._send(200, dict(ok=True, public=bool(public)))
+
         if path == "/api/unlink-discord" and method == "POST":
             if not user:
                 return self._send(401, {"error": "Нужен вход"})
@@ -1484,6 +1650,14 @@ class Handler(BaseHTTPRequestHandler):
                 user_id=uid, nickname=user["nickname"], unread=unread,
                 discord=dict(linked=bool(user["discord_id"]) if "discord_id" in keys else False,
                              username=(user["discord_username"] or "") if "discord_username" in keys else ""),
+                steam=dict(linked=bool(user["steam_id"]) if "steam_id" in keys else False,
+                           nick=(user["steam_nick"] or "") if "steam_nick" in keys else "",
+                           avatar=(user["steam_avatar"] or "") if "steam_avatar" in keys else "",
+                           profile_loaded=bool((user["steam_nick"] or user["steam_avatar"])
+                                               if ("steam_nick" in keys and "steam_avatar" in keys) else False),
+                           public=bool(user["steam_public"]) if "steam_public" in keys else True,
+                           profile_url=("https://steamcommunity.com/profiles/" + user["steam_id"])
+                           if ("steam_id" in keys and user["steam_id"]) else ""),
                 discord_enabled=DISCORD_ENABLED,
                 listing=row_to_listing(listing_row, uid, full=True, conn=conn) if listing_row else None,
                 applications=[dict(id=a["id"], squad_id=a["squad_id"], squad_name=a["squad_name"],
@@ -1501,7 +1675,7 @@ class Handler(BaseHTTPRequestHandler):
         # --- анкеты игроков ---
         if path == "/api/players" and method == "GET":
             rows = conn.execute("SELECT * FROM listings WHERE hidden = 0 ORDER BY id").fetchall()
-            items = [row_to_listing(r, uid) for r in rows]
+            items = [row_to_listing(r, uid, conn=conn) for r in rows]
             items = [i for i in items if not (query.get("exclude_me") and i["is_me"])]
             if uid:
                 # прячем анкеты заблокированных (в обе стороны) — для этого нужны id владельцев
@@ -1582,7 +1756,7 @@ class Handler(BaseHTTPRequestHandler):
             rows = conn.execute(
                 "SELECT * FROM listings WHERE looking_at IS NOT NULL AND looking_at >= ? ORDER BY looking_at DESC",
                 (cutoff,)).fetchall()
-            items = [row_to_listing(r, uid) for r in rows]
+            items = [row_to_listing(r, uid, conn=conn) for r in rows]
             game = (query.get("game") or [""])[0]
             region = (query.get("region") or [""])[0]
             if game:

@@ -7,7 +7,7 @@
 1. Установлен Python 3? Проверка: открой «Командную строку» и набери `python --version`.
    Если нет — поставь с [python.org/downloads](https://www.python.org/downloads/) с галочкой **Add python.exe to PATH**.
 2. Двойной клик по **`start.bat`** — откроется окно приложения (сервер поднимется сам).
-3. Чтобы появилась иконка на рабочем столе и в «Пуск»: правый клик по **`install-windows-shortcut.ps1`** → «Выполнить с помощью PowerShell».
+3. Чтобы появилась иконка на рабочем столе и в «Пуск»: правый клик по **`install-windows-shortcut.ps1`**, затем «Выполнить с помощью PowerShell».
 4. Порт можно поменять: `start.bat 8100`.
 
 ## macOS
