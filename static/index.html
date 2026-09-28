@@ -230,6 +230,21 @@
  display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.26);border:1px solid var(--border);
  border-radius:12px;padding:9px 11px
  }
+ .wz-steps{display:flex;gap:8px;margin-bottom:18px}
+ .wz-steps span{flex:1;height:3px;border-radius:2px;background:var(--border-strong)}
+ .wz-steps span.on{background:var(--acc)}
+ .wz-games{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;
+ max-height:230px;overflow:auto;padding-right:4px}
+ .wz-game{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 8px;
+ text-align:left;cursor:pointer;transition:.14s}
+ .wz-game b{display:block;font-size:13.5px}
+ .wz-game span{font-size:11px;color:var(--muted)}
+ .wz-game:hover{border-color:var(--border-strong)}
+ .wz-game.on{border-color:var(--acc);background:rgba(255,106,0,.12)}
+ .wz-row{display:grid;grid-template-columns:74px 1fr 1fr;gap:8px;align-items:center;margin-bottom:8px}
+ .wz-row .inp{padding:8px 10px;font-size:13.5px}
+ .wz-chips{display:flex;gap:8px;flex-wrap:wrap}
+ .wz-chips .chip{cursor:pointer}
  .gchip{
  display:inline-flex;align-items:center;justify-content:center;flex:none;
  min-width:46px;height:32px;padding:0 9px;border-radius:10px;
@@ -533,6 +548,16 @@
  <div class="stats" id="statsBox"></div>
  </div>
 
+ <div class="panel-box" id="fillCta" style="display:none;margin-bottom:18px">
+ <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+ <div style="flex:1;min-width:220px">
+ <b>Ты ещё не в поиске</b>
+ <div class="hint">Заполни анкету — и другие игроки смогут тебя найти и позвать в пати.</div>
+ </div>
+ <button class="btn primary" onclick="openOnboarding()">Заполнить анкету</button>
+ </div>
+ </div>
+
  <div class="lfg">
  <div class="lfg-head">
  <b><span class="lfg-pulse"></span> Сейчас ищут компанию <span class="hint" id="lfgCount"></span></b>
@@ -651,6 +676,15 @@
  <p class="hint" style="margin:10px 0 0">Удаление стирает анкету, переписку, отзывы и подписки на уведомления без возможности восстановления.</p>
  </div>
 
+ <div class="panel-box">
+ <h3 style="font-size:15.5px;margin-bottom:6px">Пароль и вход</h3>
+ <p class="hint" style="margin-top:0">Пароль хранится как необратимый хеш — мы не можем его прочитать.
+ Смена пароля завершает сессии на других устройствах.</p>
+ <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+ <button class="btn sm" onclick="openPasswordChange()">Сменить пароль</button>
+ </div>
+ </div>
+
  <div class="panel-box" id="accountsBox">
  <h3 style="font-size:15.5px;margin-bottom:12px">Привязанные аккаунты</h3>
  <div id="discordRow"></div>
@@ -722,6 +756,7 @@ const state = {
  pollTimer: null,
  chatMeta: new Map(),
  loginRequired: false,
+ wizard: null,
  cfg: { discord_enabled: false, push_enabled: false },
  push: { available: false, subscribed: false, devices: 0, permission: 'default' },
  outbox: [],
@@ -834,22 +869,103 @@ function requireLogin() {
  <div style="flex:1;height:1px;background:var(--border)"></div>
  </div>
  <button class="btn" style="width:100%;background:#5865F2;border-color:transparent;color:#fff"
- onclick="location.href='/api/auth/discord/login'">Войти через Discord</button>
- <p class="hint">Надёжный вход: ник подтянется из Discord, пароль не нужен.</p>` : `
- <p class="hint"> Discord-вход включается переменными <code>DISCORD_CLIENT_ID</code> и
- <code>DISCORD_CLIENT_SECRET</code> на сервере — см. DEPLOY.md.</p>`;
+ onclick="location.href='/api/auth/discord/login'">Войти через Discord</button>` : '';
+ state.authMode = state.authMode || 'register';
  openModal(`
- <div class="modal-head"><h3>Вход в SQUADUP</h3></div>
+ <div class="modal-head"><h3 id="authTitle">Создать аккаунт</h3></div>
  <div class="modal-body">
- <p class="hint" style="margin-top:0">Придумай ник — под ним тебя будут видеть другие игроки. Пароль не нужен.</p>
- <label class="lbl">Твой ник</label>
- <input class="inp" id="loginNick" placeholder="Например: NightRaven" maxlength="32" autocomplete="off">
- <div id="loginErr" style="color:var(--acc-3);font-size:13px;margin-top:8px"></div>
+ <div class="seg" id="authSwitch" style="margin:0 0 16px">
+ <button data-v="register" class="on">Я здесь впервые</button>
+ <button data-v="login">У меня есть аккаунт</button>
+ </div>
+ <p class="hint" style="margin-top:0" id="authHint">Ник увидят другие игроки, а пароль нужен,
+ чтобы никто не смог зайти под твоим именем и прочитать твои переписки.</p>
+ <label class="lbl">Ник</label>
+ <input class="inp" id="loginNick" placeholder="Например: NightRaven" maxlength="32" autocomplete="username">
+ <label class="lbl" style="margin-top:12px">Пароль</label>
+ <input class="inp" id="loginPass" type="password" placeholder="Не короче 6 символов" autocomplete="current-password">
+ <div id="loginErr" style="color:var(--acc-3);font-size:13px;margin-top:10px"></div>
+ <p class="hint" style="margin-bottom:0">Пароль хранится только в виде необратимого хеша — восстановить его нельзя,
+ но можно сменить в «Моей анкете». Вход через Discord и Steam тоже доступен.</p>
  ${discordBlock}
  </div>
- <div class="modal-foot"><button class="btn primary" onclick="doLogin()">Войти и искать тиммейтов</button></div>
+ <div class="modal-foot"><button class="btn primary" id="authSubmit" onclick="doLogin()">Создать аккаунт</button></div>
  `);
+ const btns = $$('#authSwitch button');
+ btns.forEach(b => b.onclick = () => {
+ state.authMode = b.dataset.v;
+ btns.forEach(x => x.classList.toggle('on', x === b));
+ $('#authTitle').textContent = state.authMode === 'login' ? 'Вход в SQUADUP' : 'Создать аккаунт';
+ $('#authSubmit').textContent = state.authMode === 'login' ? 'Войти' : 'Создать аккаунт';
+ $('#authHint').textContent = state.authMode === 'login'
+ ? 'Введи ник и пароль, которые указывал при регистрации.'
+ : 'Ник увидят другие игроки, а пароль нужен, чтобы никто не смог зайти под твоим именем и прочитать твои переписки.';
+ $('#loginErr').textContent = '';
+ });
+ btns.forEach(x => x.classList.toggle('on', x.dataset.v === state.authMode));
+ $('#authTitle').textContent = state.authMode === 'login' ? 'Вход в SQUADUP' : 'Создать аккаунт';
+ $('#authSubmit').textContent = state.authMode === 'login' ? 'Войти' : 'Создать аккаунт';
  setTimeout(() => { const i = $('#loginNick'); if (i) i.focus(); }, 60);
+}
+
+/* шаг «придумай пароль» для аккаунтов без пароля (демо-аккаунты и старые записи) */
+function askPasswordSetup(setupToken, nick) {
+ openModal(`
+ <div class="modal-head"><h3>Придумай пароль</h3></div>
+ <div class="modal-body">
+ <p style="margin-top:0">Ник <b>${esc(nick)}</b> зарегистрирован без пароля. Чтобы никто не смог
+ зайти под ним, придумай пароль — он сохранится как необратимый хеш.</p>
+ <label class="lbl">Пароль</label>
+ <input class="inp" id="setupPass" type="password" placeholder="Не короче 6 символов" autocomplete="new-password">
+ <label class="lbl" style="margin-top:12px">Повтори пароль</label>
+ <input class="inp" id="setupPass2" type="password" autocomplete="new-password">
+ <div id="setupErr" style="color:var(--acc-3);font-size:13px;margin-top:10px"></div>
+ </div>
+ <div class="modal-foot"><button class="btn primary" onclick="submitPasswordSetup('${setupToken}')">Сохранить пароль</button></div>
+ `);
+ setTimeout(() => { const i = $('#setupPass'); if (i) i.focus(); }, 60);
+}
+async function submitPasswordSetup(setupToken) {
+ const p1 = $('#setupPass').value, p2 = $('#setupPass2').value;
+ const err = (m) => { $('#setupErr').textContent = m; };
+ if (p1.length < 6) return err('Пароль должен быть не короче 6 символов');
+ if (p1 !== p2) return err('Пароли не совпадают');
+ try {
+ const r = await api('/api/password/setup', { method: 'POST', body: { setup_token: setupToken, password: p1 } });
+ state.token = r.token;
+ localStorage.setItem('squadup_token', r.token);
+ closeModal();
+ await bootstrapUser();
+ toast('Пароль сохранён. Теперь вход только с ним.', 'ok');
+ } catch (e) { err(e.message); }
+}
+
+/* смена пароля в «Моей анкете» */
+function openPasswordChange() {
+ openModal(`
+ <div class="modal-head"><h3>Сменить пароль</h3>
+ <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+ <div class="modal-body">
+ <label class="lbl">Текущий пароль</label>
+ <input class="inp" id="oldPass" type="password" autocomplete="current-password">
+ <label class="lbl" style="margin-top:12px">Новый пароль</label>
+ <input class="inp" id="newPass" type="password" placeholder="Не короче 6 символов" autocomplete="new-password">
+ <div id="passErr" style="color:var(--acc-3);font-size:13px;margin-top:10px"></div>
+ <p class="hint">После смены пароля все другие устройства выйдут из аккаунта — это защита на случай,
+ если пароль узнал кто-то посторонний.</p>
+ </div>
+ <div class="modal-foot"><button class="btn primary" onclick="submitPasswordChange()">Сохранить новый пароль</button></div>
+ `);
+}
+async function submitPasswordChange() {
+ const oldp = $('#oldPass').value, newp = $('#newPass').value;
+ if (newp.length < 6) { $('#passErr').textContent = 'Новый пароль должен быть не короче 6 символов'; return; }
+ try {
+ const r = await api('/api/me/password', { method: 'POST', body: { old_password: oldp, new_password: newp } });
+ if (r.token) { state.token = r.token; localStorage.setItem('squadup_token', r.token); }
+ closeModal();
+ toast('Пароль изменён', 'ok');
+ } catch (e) { $('#passErr').textContent = e.message; }
 }
 
 /* ---------- установка приложения (PWA) ---------- */
@@ -1026,16 +1142,217 @@ async function steamVisibility(publicNow) {
 
 async function doLogin() {
  const nick = $('#loginNick').value.trim();
- if (!nick) { $('#loginErr').textContent = 'Введите ник'; return; }
+ const password = $('#loginPass').value;
+ const err = (m) => { const e = $('#loginErr'); if (e) e.textContent = m; };
+ if (nick.length < 2) return err('Ник должен быть не короче 2 символов');
+ if (password.length < 6) return err('Пароль должен быть не короче 6 символов');
+ const btn = $('#authSubmit');
+ if (btn) { btn.disabled = true; btn.textContent = 'Проверяю…'; }
  try {
- const r = await api('/api/login', { method: 'POST', body: { nickname: nick } });
+ const r = await api('/api/login', { method: 'POST', body: { nickname: nick, password } });
+ if (r.needs_password && r.setup_token) { askPasswordSetup(r.setup_token, r.nickname); return; }
+ if (r.needs_password) return err(r.error || 'Введи пароль');
  state.token = r.token;
  localStorage.setItem('squadup_token', r.token);
  closeModal();
  await bootstrapUser();
- toast('Добро пожаловать, <b>' + esc(r.nickname) + '</b>! Демо-анкеты уже загружены — ищи своих.', 'ok');
- } catch (e) { $('#loginErr').textContent = e.message; }
+ toast(r.created ? 'Аккаунт создан. Заполним анкету — это займёт минуту.'
+ : 'С возвращением, <b>' + esc(r.nickname) + '</b>!', 'ok');
+ if (r.created && !state.me.listing) openOnboarding();
+ } catch (e) {
+ err(e.message);
+ } finally {
+ if (btn) { btn.disabled = false; btn.textContent = state.authMode === 'login' ? 'Войти' : 'Создать аккаунт'; }
+ }
 }
+
+/* ---------- мастер первого запуска ---------- */
+function openOnboarding() {
+ if (!state.meta) return;
+ const w = state.wizard = { step: 1, games: [] };
+ const meta = state.meta;
+ state.gameRows = [];
+
+ const gameCards = meta.games.map(g => `
+ <button class="wz-game" data-id="${g.id}" onclick="wzToggleGame('${g.id}')">
+ <b>${esc(g.short)}</b><span>${esc(g.genre)}</span>
+ </button>`).join('');
+
+ openModal(`
+ <div class="modal-head"><h3 id="wzTitle">Шаг 1 из 3 — знакомство</h3></div>
+ <div class="modal-body" style="min-height:330px">
+ <div class="wz-steps"><span class="on" id="wzD1"></span><span id="wzD2"></span><span id="wzD3"></span></div>
+
+ <div id="wzStep1">
+ <p class="hint" style="margin-top:0">Под этим ником тебя увидят другие игроки.</p>
+ <label class="lbl">Ник в игре</label>
+ <input class="inp" id="wzNick" maxlength="32" value="${esc((state.me && state.me.nickname) || '')}">
+ <div style="display:flex;gap:12px;margin-top:12px">
+ <div style="max-width:120px"><label class="lbl">Возраст</label>
+ <input class="inp" id="wzAge" type="number" min="12" max="99" value="20"></div>
+ <div style="flex:1"><label class="lbl">Регион</label>
+ <select class="inp" id="wzRegion">${meta.regions.map(r => `<option value="${r.id}" ${r.id === 'kz' ? '' : ''}>${esc(r.label)}</option>`).join('')}</select></div>
+ </div>
+ </div>
+
+ <div id="wzStep2" style="display:none">
+ <p class="hint" style="margin-top:0">Выбери игры, в которые играешь. Можно до четырёх — потом поменяешь.</p>
+ <div class="wz-games" id="wzGames">${gameCards}</div>
+ <div id="wzRows" style="margin-top:14px"></div>
+ </div>
+
+ <div id="wzStep3" style="display:none">
+ <p class="hint" style="margin-top:0">Пара строк о себе — по ним тебя находят в поиске.</p>
+ <label class="lbl">О себе</label>
+ <textarea class="inp" id="wzAbout" rows="3" maxlength="400"
+ placeholder="Играю по вечерам, микрофон есть, без токсичности. Ищу спокойное пати."></textarea>
+ <div style="margin-top:12px"><label class="lbl">Платформа</label>
+ <div class="wz-chips" id="wzPlatforms">${Object.entries(meta.platforms).map(([v, l], i) =>
+ `<button class="chip ${i === 0 ? 'on' : ''}" data-v="${v}" data-on="${i === 0 ? '1' : '0'}"
+ onclick="wzChip(this)">${esc(l)}</button>`).join('')}</div></div>
+ <div style="margin-top:12px"><label class="lbl">Когда обычно играешь</label>
+ <div class="wz-chips" id="wzSchedule">${meta.schedule_slots.map((sl, i) =>
+ `<button class="chip ${i === 1 ? 'on' : ''}" data-v="${esc(sl)}" data-on="${i === 1 ? '1' : '0'}"
+ onclick="wzChip(this)">${esc(sl)}</button>`).join('')}</div></div>
+ <div style="margin-top:12px"><label class="lbl">Микрофон</label>
+ <div style="display:flex;gap:10px">
+ <button class="chip on" id="wzMicOn" data-on="1" onclick="wzMic(1)">Есть микрофон</button>
+ <button class="chip" id="wzMicOff" data-on="0" onclick="wzMic(0)">Без микрофона</button>
+ </div></div>
+ <div style="margin-top:12px"><label class="lbl">Контакт для связи — необязательно</label>
+ <input class="inp" id="wzContact" placeholder="discord: nick" maxlength="60"></div>
+ </div>
+
+ <div id="wzErr" style="color:var(--acc-3);font-size:13px;margin-top:12px"></div>
+ </div>
+ <div class="modal-foot" style="justify-content:space-between">
+ <button class="btn ghost" id="wzBack" onclick="wzBack()" style="visibility:hidden">Назад</button>
+ <div style="display:flex;gap:10px">
+ <button class="btn ghost" onclick="wzSkip()">Позже</button>
+ <button class="btn primary" id="wzNext" onclick="wzNext()">Дальше</button>
+ </div>
+ </div>
+ `);
+ const nickInput = $('#wzNick');
+ if (nickInput) setTimeout(() => nickInput.focus(), 80);
+}
+
+function wzChip(btn) {
+ const single = btn.parentElement.id === 'wzSchedule';
+ if (single) $$('#' + btn.parentElement.id + ' .chip').forEach(c => {
+ c.dataset.on = '0'; c.classList.remove('on');
+ });
+ btn.dataset.on = btn.dataset.on === '1' ? '0' : '1';
+ btn.classList.toggle('on', btn.dataset.on === '1');
+}
+function wzMic(v) {
+ $('#wzMicOn').dataset.on = String(v); $('#wzMicOff').dataset.on = String(1 - v);
+ $('#wzMicOn').classList.toggle('on', v === 1);
+ $('#wzMicOff').classList.toggle('on', v === 0);
+}
+function wzToggleGame(id) {
+ const w = state.wizard; if (!w) return;
+ const meta = state.meta;
+ const card = document.querySelector(`.wz-game[data-id="${id}"]`);
+ const idx = w.games.findIndex(g => g.game_id === id);
+ if (idx >= 0) {
+ w.games.splice(idx, 1);
+ card.classList.remove('on');
+ } else {
+ if (w.games.length >= 4) { $('#wzErr').textContent = 'Максимум 4 игры — можно поменять позже в анкете'; return; }
+ const g = meta.games.find(x => x.id === id);
+ w.games.push({ game_id: id, rank: g.ranks[0], role: g.roles[0], hours: 100, modes: g.modes });
+ card.classList.add('on');
+ }
+ $('#wzErr').textContent = '';
+ wzRenderRows();
+}
+function wzRenderRows() {
+ const w = state.wizard; if (!w) return;
+ $('#wzRows').innerHTML = w.games.length ? '<label class="lbl">Твой уровень в играх</label>' + w.games.map((g, i) => {
+ const meta = state.meta.games.find(x => x.id === g.game_id);
+ return `<div class="wz-row">
+ <b style="min-width:74px">${esc(meta.short)}</b>
+ <select class="inp" onchange="wzSet(${i},'rank',this.value)">${meta.ranks.map(r =>
+ `<option ${r === g.rank ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>
+ <select class="inp" onchange="wzSet(${i},'role',this.value)">${meta.roles.map(r =>
+ `<option ${r === g.role ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>
+ </div>`;
+ }).join('') : '';
+}
+function wzSet(i, field, value) { if (state.wizard && state.wizard.games[i]) state.wizard.games[i][field] = value; }
+
+function wzBack() {
+ const w = state.wizard; if (!w || w.step === 1) return;
+ w.step -= 1; wzShow();
+}
+function wzShow() {
+ const w = state.wizard;
+ $('#wzStep1').style.display = w.step === 1 ? '' : 'none';
+ $('#wzStep2').style.display = w.step === 2 ? '' : 'none';
+ $('#wzStep3').style.display = w.step === 3 ? '' : 'none';
+ $('#wzTitle').textContent = ['', 'Шаг 1 из 3 — знакомство', 'Шаг 2 из 3 — игры',
+ 'Шаг 3 из 3 — о себе'][w.step];
+ $('#wzD1').className = w.step >= 1 ? 'on' : '';
+ $('#wzD2').className = w.step >= 2 ? 'on' : '';
+ $('#wzD3').className = w.step >= 3 ? 'on' : '';
+ $('#wzBack').style.visibility = w.step === 1 ? 'hidden' : 'visible';
+ $('#wzNext').textContent = w.step === 3 ? 'Опубликовать анкету' : 'Дальше';
+ $('#wzErr').textContent = '';
+}
+function wzNext() {
+ const w = state.wizard; if (!w) return;
+ const err = (m) => { $('#wzErr').textContent = m; };
+ if (w.step === 1) {
+ if ($('#wzNick').value.trim().length < 2) return err('Введите ник');
+ w.step = 2; wzShow(); return;
+ }
+ if (w.step === 2) {
+ if (!w.games.length) return err('Выбери хотя бы одну игру');
+ w.step = 3; wzShow(); return;
+ }
+ wzPublish();
+}
+async function wzPublish() {
+ const w = state.wizard; if (!w) return;
+ const chosens = $$('#wzPlatforms .chip').filter(c => c.dataset.on === '1').map(c => c.dataset.v);
+ const sched = $$('#wzSchedule .chip').filter(c => c.dataset.on === '1').map(c => c.dataset.v);
+ const btn = $('#wzNext');
+ btn.disabled = true; btn.textContent = 'Публикую…';
+ try {
+ await api('/api/listing', { method: 'PUT', body: {
+ nick: $('#wzNick').value.trim(),
+ age: +$('#wzAge').value || 18,
+ region: $('#wzRegion').value,
+ skill: 3,
+ mic: $('#wzMicOn').dataset.on === '1' ? 1 : 0,
+ vibe: 'chill',
+ schedule: sched.length ? sched : ['Вечер 18–24'],
+ about: $('#wzAbout').value.trim() || 'Ищу тиммейтов — напиши, договоримся.',
+ games: w.games,
+ platforms: chosens.length ? chosens : ['pc'],
+ languages: ['Русский'],
+ contact: $('#wzContact').value.trim(),
+ } });
+ closeModal();
+ state.wizard = null;
+ await bootstrapUser();
+ loadPlayers(); loadStats(); loadLooking();
+ toast('Анкета опубликована — ты в поиске. Позови кого-нибудь или нажми «Я готов играть».', 'ok');
+ go('search');
+ } catch (e) {
+ err(e.message);
+ } finally {
+ btn.disabled = false; btn.textContent = 'Опубликовать анкету';
+ }
+}
+function wzSkip() {
+ closeModal();
+ state.wizard = null;
+ toast('Анкету можно заполнить позже — вкладка «Моя анкета»', '');
+ go('profile');
+}
+
 function logout() {
  localStorage.removeItem('squadup_token');
  state.token = null; state.me = null;
@@ -1056,7 +1373,6 @@ function closeModal() {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-/* ---------- загрузка метаданных ---------- */
 async function loadMeta() {
  state.meta = await api('/api/games');
  const gsel = $('#fgame'), ssel = $('#sgame');
@@ -2133,6 +2449,7 @@ async function bootstrapUser() {
  renderAccounts();
  renderSteamRow();
  $('#unreadBadge').style.display = state.me.unread ? '' : 'none';
+ const cta = $('#fillCta'); if (cta) cta.style.display = state.me.listing ? 'none' : '';
  $('#unreadBadge').textContent = state.me.unread || 0;
  fillListingForm(state.me.listing);
  $('#myListingState').innerHTML = state.me.listing
@@ -2171,6 +2488,11 @@ async function init() {
  loadPlayers();
  loadLooking();
  $('#lfgToggle').onclick = toggleLooking;
+ document.addEventListener('keydown', e => {
+ if (e.key === 'Enter' && $('#loginNick') && document.activeElement && ['loginNick', 'loginPass'].includes(document.activeElement.id)) {
+ e.preventDefault(); doLogin();
+ }
+ });
  setInterval(() => {
  if ($('#view-search').classList.contains('active')) { loadLooking(); loadStats(); }
  }, 45000);

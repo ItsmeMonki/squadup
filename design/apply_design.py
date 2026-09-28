@@ -3,12 +3,12 @@
 apply_design.py — установка дизайн-ассетов SQUADUP.
 
 Что делает:
-  1. читает design/tokens.json → пишет static/theme.css (цвета, радиусы, свечение, шрифты);
-  2. копирует шрифты design/fonts/* → static/fonts/ и подключает @font-face;
-  3. копирует логотипы design/brand/*.svg → static/brand/;
+  1. читает design/tokens.json -> пишет static/theme.css (цвета, радиусы, свечение, шрифты);
+  2. копирует шрифты design/fonts/* -> static/fonts/ и подключает @font-face;
+  3. копирует логотипы design/brand/*.svg -> static/brand/;
   4. генерирует из design/brand/icon-master.png все размеры иконок приложения
      (192, 512, maskable 512, apple-touch 180, favicon 32/64, .ico);
-  5. копирует иконки интерфейса design/icons/*.svg → static/icons/ui/;
+  5. копирует иконки интерфейса design/icons/*.svg -> static/icons/ui/;
   6. обновляет theme_color / background_color в static/manifest.webmanifest;
   7. подключает theme.css в static/index.html (один раз, после встроенных стилей);
   8. печатает отчёт: что установлено, чего не хватает.
@@ -40,7 +40,7 @@ notes: list[str] = []
 
 
 def say(ok: bool, text: str):
-    print(f"  {'✅' if ok else '⚠️ '} {text}")
+    print(f"  {'' if ok else 'Внимание:'} {text}")
 
 
 def hex_ok(value: str) -> bool:
@@ -154,7 +154,7 @@ def install_fonts(check: bool) -> None:
         os.makedirs(dst, exist_ok=True)
         for f in files:
             shutil.copy2(os.path.join(src, f), os.path.join(dst, f))
-    installed.append(f"шрифты: {len(files)} файл(ов) → /fonts/  ({', '.join(files[:4])}{'…' if len(files) > 4 else ''})")
+    installed.append(f"шрифты: {len(files)} файл(ов) -> /fonts/  ({', '.join(files[:4])}{'…' if len(files) > 4 else ''})")
 
 
 def install_brand(check: bool) -> None:
@@ -166,7 +166,7 @@ def install_brand(check: bool) -> None:
             os.makedirs(dst, exist_ok=True)
             for f in svgs:
                 shutil.copy2(os.path.join(src, f), os.path.join(dst, f))
-        installed.append(f"логотипы: {', '.join(svgs)} → /brand/")
+        installed.append(f"логотипы: {', '.join(svgs)} -> /brand/")
     else:
         missing.append("логотип (design/brand/logo.svg, wordmark.svg)")
 
@@ -218,7 +218,7 @@ def install_ui_icons(check: bool) -> None:
             shutil.copy2(os.path.join(src, f), os.path.join(dst, f))
     have = {os.path.splitext(f)[0] for f in svgs}
     gaps = [s for s in ICON_SLOTS if s not in have]
-    installed.append(f"иконки интерфейса: {len(svgs)} файл(ов) → /icons/ui/")
+    installed.append(f"иконки интерфейса: {len(svgs)} файл(ов) -> /icons/ui/")
     if gaps:
         missing.append("иконки из обязательного списка: " + ", ".join(gaps))
 
@@ -298,7 +298,7 @@ def main() -> int:
 
     print("ГОТОВО:" if not check else "НАЙДЕНО:")
     for x in installed:
-        print("  ✅ " + x)
+        print("  " + x)
     if missing:
         print("\nЖДЁМ ОТ ТЕБЯ:")
         for x in missing:

@@ -1,6 +1,6 @@
 # Render Blueprint: https://render.com/docs/blueprint-spec
-# Как пользоваться: положить репозиторий на GitHub → в Render нажать
-# «New +» → «Blueprint» → выбрать репозиторий → Apply. Всё остальное Render сделает сам.
+# Как пользоваться: положить репозиторий на GitHub -> в Render нажать
+# «New +» -> «Blueprint» -> выбрать репозиторий -> Apply. Всё остальное Render сделает сам.
 
 services:
   - type: web
@@ -29,7 +29,7 @@ services:
       #        value: /data/squadup.db
       #
       # --- Модерация (жалобы) ---
-      # Задай ADMIN_KEY в панели Render: Environment → Add Environment Variable.
+      # Задай ADMIN_KEY в панели Render: Environment -> Add Environment Variable.
       # Без него приложение работает, но эндпоинты модератора отвечают 403.
       - key: ADMIN_KEY
         generateValue: true  # Render сам сгенерирует случайный ключ и покажет его в панели

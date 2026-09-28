@@ -250,7 +250,8 @@ CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     token TEXT UNIQUE,
     nickname TEXT,
-    created_at TEXT
+    created_at TEXT,
+    password_hash TEXT
 );
 CREATE TABLE IF NOT EXISTS listings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -550,6 +551,8 @@ def migrate(conn):
         conn.execute("ALTER TABLE users ADD COLUMN discord_id TEXT")
     if "discord_username" not in users_cols:
         conn.execute("ALTER TABLE users ADD COLUMN discord_username TEXT")
+    if "password_hash" not in users_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
     if "steam_id" not in users_cols:
         conn.execute("ALTER TABLE users ADD COLUMN steam_id TEXT")
     if "steam_nick" not in users_cols:
@@ -603,6 +606,66 @@ def http_json(url, data=None, headers=None, form=False, timeout=12):
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         raw = resp.read().decode("utf-8")
     return json.loads(raw) if raw else {}
+
+
+# --- пароли аккаунтов -------------------------------------------------------
+# Храним только производный ключ PBKDF2-HMAC-SHA256 с индивидуальной солью.
+# Сам пароль не сохраняется и не может быть восстановлен из базы.
+PASSWORD_ITERATIONS = 120000
+PASSWORD_MIN = 6
+
+LOGIN_ATTEMPTS = {}          # "ник|ip" -> [попытки, время первой]
+LOGIN_LOCK = threading.Lock()
+LOGIN_MAX_ATTEMPTS = 12
+LOGIN_WINDOW_SEC = 600
+
+
+def hash_password(password):
+    import hashlib
+    salt = os.urandom(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PASSWORD_ITERATIONS)
+    return f"pbkdf2_sha256${PASSWORD_ITERATIONS}${salt.hex()}${dk.hex()}"
+
+
+def verify_password(password, stored):
+    import hashlib
+    import hmac
+    if not stored:
+        return False
+    try:
+        algo, iters, salt_hex, hash_hex = stored.split("$")
+        if algo != "pbkdf2_sha256":
+            return False
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), int(iters))
+        return hmac.compare_digest(dk.hex(), hash_hex)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def login_rate_check(key):
+    """Простая защита от перебора: не больше 12 неудачных попыток за 10 минут."""
+    import time as _time
+    now = _time.time()
+    with LOGIN_LOCK:
+        stale = [k for k, v in LOGIN_ATTEMPTS.items() if now - v[1] > LOGIN_WINDOW_SEC]
+        for k in stale:
+            LOGIN_ATTEMPTS.pop(k, None)
+        cnt, first = LOGIN_ATTEMPTS.get(key, [0, now])
+        if cnt >= LOGIN_MAX_ATTEMPTS:
+            return False, int(LOGIN_WINDOW_SEC - (now - first))
+        return True, 0
+
+
+def login_rate_fail(key):
+    import time as _time
+    with LOGIN_LOCK:
+        cnt, first = LOGIN_ATTEMPTS.get(key, [0, _time.time()])
+        LOGIN_ATTEMPTS[key] = [cnt + 1, first]
+
+
+def login_rate_reset(key):
+    with LOGIN_LOCK:
+        LOGIN_ATTEMPTS.pop(key, None)
 
 
 def steam_fetch_profile(steam_id):
@@ -1139,7 +1202,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/config" and method == "GET":
             return self._send(200, dict(discord_enabled=DISCORD_ENABLED,
                                         push_enabled=PUSH_ENABLED,
-                                        app_name="SQUADUP", version="1.4"))
+                                        app_name="SQUADUP", version="1.5"))
 
         if path == "/api/games" and method == "GET":
             return self._send(200, dict(
@@ -1151,21 +1214,100 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/login" and method == "POST":
             body = self._json_body()
             nick = (body.get("nickname") or "").strip()[:32]
-            if not nick:
-                return self._send(400, {"error": "Введите ник"})
-            row = conn.execute("SELECT * FROM users WHERE nickname = ?", (nick,)).fetchone()
-            if row:
-                token = row["token"]
-                uid = row["id"]
-            else:
-                uid, token = str(uuid.uuid4()), uuid.uuid4().hex
-                conn.execute("INSERT INTO users (id, token, nickname, created_at) VALUES (?,?,?,?)",
-                             (uid, token, nick, now_iso()))
-                conn.commit()
-                self.seed_welcome_chats(conn, uid)
-            return self._send(200, dict(token=token, user_id=uid, nickname=nick))
+            password = str(body.get("password") or "")
+            if len(nick) < 2:
+                return self._send(400, {"error": "Ник должен быть не короче 2 символов"})
+            # за прокси хостинга реальный адрес приходит в X-Forwarded-For
+            fwd = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+            client_ip = fwd or (self.client_address[0] if self.client_address else "?")
+            rk = (nick.lower() + "|" + client_ip)
+            allowed, wait = login_rate_check(rk)
+            if not allowed:
+                return self._send(429, {"error": f"Слишком много попыток входа. Подожди {max(1, wait // 60)} мин."})
+            row = conn.execute("SELECT * FROM users WHERE nickname = ? COLLATE NOCASE", (nick,)).fetchone()
 
-        # --- Модерация: жалобы и блокировки ---
+            # Аккаунт уже есть
+            if row:
+                stored = row["password_hash"] if "password_hash" in row.keys() else None
+                if stored:
+                    if not password:
+                        login_rate_fail(rk)
+                        return self._send(400, {"error": "Введите пароль от аккаунта", "need_password": True})
+                    if not verify_password(password, stored):
+                        login_rate_fail(rk)
+                        return self._send(401, {"error": "Неверный пароль", "need_password": True})
+                    login_rate_reset(rk)
+                    return self._send(200, dict(token=row["token"], user_id=row["id"],
+                                                nickname=row["nickname"], created=False))
+                # Аккаунт без пароля: либо создан до появления паролей, либо вход был через Discord/Steam.
+                oauth_linked = bool((row["discord_id"] if "discord_id" in row.keys() else None) or
+                                    (row["steam_id"] if "steam_id" in row.keys() else None))
+                if oauth_linked:
+                    return self._send(403, {"error": "Этот ник привязан к Discord или Steam — войди через них "
+                                                     "или выбери другой ник"})
+                # Придумываем пароль: одноразовый токен на 10 минут
+                if len(password) < PASSWORD_MIN:
+                    return self._send(200, dict(needs_password=True, nickname=row["nickname"],
+                                                error=f"Придумай пароль не короче {PASSWORD_MIN} символов"))
+                setup = uuid.uuid4().hex
+                with OAUTH_LOCK:
+                    OAUTH_STATES[setup] = dict(created=datetime.now(timezone.utc), link_uid=row["id"],
+                                               kind="password_setup")
+                return self._send(200, dict(needs_password=True, setup_token=setup,
+                                            nickname=row["nickname"]))
+
+            # Новый аккаунт
+            if len(password) < PASSWORD_MIN:
+                return self._send(400, {"error": f"Придумай пароль не короче {PASSWORD_MIN} символов"})
+            uid, token = str(uuid.uuid4()), uuid.uuid4().hex
+            conn.execute("""INSERT INTO users (id, token, nickname, created_at, password_hash)
+                            VALUES (?,?,?,?,?)""",
+                         (uid, token, nick, now_iso(), hash_password(password)))
+            conn.commit()
+            self.seed_welcome_chats(conn, uid)
+            login_rate_reset(rk)
+            return self._send(200, dict(token=token, user_id=uid, nickname=nick, created=True))
+
+        if path == "/api/password/setup" and method == "POST":
+            body = self._json_body()
+            setup = (body.get("setup_token") or "").strip()
+            password = str(body.get("password") or "")
+            with OAUTH_LOCK:
+                st = OAUTH_STATES.pop(setup, None)
+            if not st or st.get("kind") != "password_setup":
+                return self._send(400, {"error": "Ссылка устарела — попробуй войти заново"})
+            if len(password) < PASSWORD_MIN:
+                return self._send(400, {"error": f"Пароль должен быть не короче {PASSWORD_MIN} символов"})
+            token = uuid.uuid4().hex          # новый токен: старые сессии перестают работать
+            conn.execute("UPDATE users SET password_hash = ?, token = ? WHERE id = ?",
+                         (hash_password(password), token, st["link_uid"]))
+            conn.commit()
+            row = conn.execute("SELECT nickname FROM users WHERE id = ?", (st["link_uid"],)).fetchone()
+            return self._send(200, dict(token=token, user_id=st["link_uid"], nickname=row["nickname"]))
+
+        if path == "/api/me/password" and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            body = self._json_body()
+            old_password = str(body.get("old_password") or "")
+            new_password = str(body.get("new_password") or "")
+            stored = user["password_hash"] if "password_hash" in user.keys() else None
+            if stored and not verify_password(old_password, stored):
+                return self._send(403, {"error": "Текущий пароль указан неверно"})
+            if len(new_password) < PASSWORD_MIN:
+                return self._send(400, {"error": f"Новый пароль должен быть не короче {PASSWORD_MIN} символов"})
+            token = uuid.uuid4().hex           # меняем пароль — меняем и сессию
+            conn.execute("UPDATE users SET password_hash = ?, token = ? WHERE id = ?",
+                         (hash_password(new_password), token, uid))
+            conn.commit()
+            return self._send(200, dict(ok=True, token=token))
+
+        if path == "/api/me/has-password" and method == "GET":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            stored = user["password_hash"] if "password_hash" in user.keys() else None
+            return self._send(200, dict(has_password=bool(stored)))
+
         if path == "/api/report" and method == "POST":
             if not user:
                 return self._send(401, {"error": "Нужен вход"})
@@ -1268,6 +1410,40 @@ class Handler(BaseHTTPRequestHandler):
                 nick = r["blocked_nick"] or user_display(conn, r["blocked_user_id"])
                 items.append(dict(blocked_user_id=r["blocked_user_id"], nick=nick, created_at=r["created_at"]))
             return self._send(200, dict(items=items, reasons=REPORT_REASONS))
+
+        if path in ("/api/admin/backup", "/api/admin/restore"):
+            admin_key = os.environ.get("ADMIN_KEY", "").strip()
+            provided = (query.get("key") or [""])[0] or (self.headers.get("X-Admin-Key") or "")
+            if not admin_key:
+                return self._send(403, {"error": "Резервные копии не настроены: задай ADMIN_KEY"})
+            if provided != admin_key:
+                return self._send(403, {"error": "Неверный ключ администратора"})
+            tables = [r["name"] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
+            if path == "/api/admin/backup" and method == "GET":
+                data = {t: [dict(r) for r in conn.execute("SELECT * FROM %s" % t)] for t in tables}
+                return self._send(200, dict(version=1, created_at=now_iso(), app="SQUADUP", tables=data))
+            if path == "/api/admin/restore" and method == "POST":
+                body = self._json_body()
+                incoming = body.get("tables") or {}
+                if not incoming:
+                    return self._send(400, {"error": "В файле нет данных для восстановления"})
+                restored = {}
+                for t in tables:
+                    rows = incoming.get(t)
+                    if rows is None:
+                        continue
+                    cols = [r["name"] for r in conn.execute("PRAGMA table_info(%s)" % t)]
+                    conn.execute("DELETE FROM %s" % t)
+                    for row in rows:
+                        use = [c for c in cols if c in row]
+                        if not use:
+                            continue
+                        conn.execute("INSERT INTO %s (%s) VALUES (%s)" % (
+                            t, ", ".join(use), ", ".join("?" * len(use))), [row[c] for c in use])
+                    restored[t] = len(rows)
+                conn.commit()
+                return self._send(200, dict(ok=True, restored=restored))
 
         if path == "/api/admin/reports" and method == "GET":
             # Простая модерация: доступ по ключу ADMIN_KEY (задаётся переменной окружения).
