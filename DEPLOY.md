@@ -1,4 +1,4 @@
-# SQUADUP: как выложить в интернет
+#  SQUADUP: как выложить в интернет
 
 После деплоя приложение открывается по публичной ссылке вида `https://squadup-production.up.railway.app` — с компьютера, телефона и планшета, и ссылку можно отправить друзьям.
 
@@ -8,7 +8,7 @@
 
 ---
 
-> **Первый раз выкладываешь?** Начни с [QUICKSTART.md](QUICKSTART.md) — это та же дорога,
+>  **Первый раз выкладываешь?** Начни с [QUICKSTART.md](QUICKSTART.md) — это та же дорога,
 > но расписаны каждый клик, регистрация и переменные. Ниже — подробности и альтернативы.
 
 ## Шаг 0. Положить код в GitHub (нужно для Railway и Render)
@@ -37,9 +37,9 @@ git push -u origin main
 1. Зайди на https://railway.com → **New Project → Deploy from GitHub repo** → выбери `squadup`.
 2. Railway сам увидит `Dockerfile` и `railway.toml` и начнёт сборку.
 3. Сразу добавь том, иначе база не будет сохраняться:
- **Settings → Volumes → Add Volume**, mount path: `/data`.
+   **Settings → Volumes → Add Volume**, mount path: `/data`.
 4. **Variables → New Variable**: `DB_PATH` = `/data/squadup.db` (плюс `PORT` = `8000`, если не подхватился сам).
- После добавления тома и переменной Railway передеплоит сервис.
+   После добавления тома и переменной Railway передеплоит сервис.
 5. **Settings → Networking → Generate Domain** — получишь публичную ссылку.
 6. Проверка: открой `https://ТВОЙ-ДОМЕН/healthz` — должно вернуться `{"ok": true, ...}`.
 
@@ -53,8 +53,8 @@ git push -u origin main
 2. Render прочитает `render.yaml` и создаст веб-сервис (Docker, регион Frankfurt) с health-check `/healthz`.
 3. Нажми **Apply** — через 2–4 минуты получишь ссылку `https://squadup.onrender.com`.
 4. Важно про тарифы:
- - **Free**: сервис засыпает через 15 минут простоя (первый заход после сна ~30–60 сек) и диск не подключается — база будет сбрасываться к демо-данным при рестарте. Для «показать друзьям» этого достаточно.
- - **Starter (~$7/мес)**: не засыпает + можно подключить диск `squadup-data` на `/data` — тогда данные сохраняются (в `render.yaml` диск уже прописан, на бесплатном плане убери блок `disk`).
+   - **Free**: сервис засыпает через 15 минут простоя (первый заход после сна ~30–60 сек) и диск не подключается — база будет сбрасываться к демо-данным при рестарте. Для «показать друзьям» этого достаточно.
+   - **Starter (~$7/мес)**: не засыпает + можно подключить диск `squadup-data` на `/data` — тогда данные сохраняются (в `render.yaml` диск уже прописан, на бесплатном плане убери блок `disk`).
 
 ---
 
@@ -74,7 +74,7 @@ docker compose up -d --build
 sudo apt install caddy
 sudo tee /etc/caddy/Caddyfile >/dev/null <<'EOF'
 squadup.твойдомен.ру {
- reverse_proxy localhost:8000
+    reverse_proxy localhost:8000
 }
 EOF
 sudo systemctl reload caddy
@@ -97,8 +97,8 @@ fly open
 Не забудь в `fly.toml` добавить монтирование тома:
 ```toml
 [mounts]
- source = "squadup_data"
- destination = "/data"
+  source = "squadup_data"
+  destination = "/data"
 ```
 
 ---
@@ -131,8 +131,8 @@ fly open
 1. Открой https://discord.com/developers/applications → **New Application** → назови `SQUADUP`.
 2. Раздел **OAuth2** скопируй **Client ID**, нажми **Reset Secret** и скопируй **Client Secret**.
 3. Там же, в **Redirects**, добавь адрес возврата. Локально и в облаке это два разных адреса — добавь оба:
- - `http://localhost:8000/api/auth/discord/callback`
- - `https://ТВОЙ-ПУБЛИЧНЫЙ-ДОМЕН/api/auth/discord/callback`
+   - `http://localhost:8000/api/auth/discord/callback`
+   - `https://ТВОЙ-ПУБЛИЧНЫЙ-ДОМЕН/api/auth/discord/callback`
 4. Пропиши переменные на платформе (Railway/Render → Variables, VPS → `.env` для docker compose):
 
 ```
@@ -152,14 +152,14 @@ DISCORD_REDIRECT_URI=https://ТВОЙ-ПУБЛИЧНЫЙ-ДОМЕН/api/auth/dis
 
 1. **HTTPS** — push не работает по `http://` (кроме `localhost`). На Railway/Render/VPS с Caddy это уже есть.
 2. **Библиотека `cryptography`** — уже добавлена в `requirements.txt` и в Dockerfile. Если запускаешь без Docker:
- `pip install -r requirements.txt`. Без неё приложение работает, но кнопка уведомлений скрыта.
+   `pip install -r requirements.txt`. Без неё приложение работает, но кнопка уведомлений скрыта.
 
 VAPID-ключи сервер генерирует сам при первом запуске и хранит в таблице `settings`.
 Если хочешь зафиксировать их (например, при переносе базы) — задай переменные:
 
 ```
-VAPID_PUBLIC_KEY=... # base64url, 65 байт
-VAPID_PRIVATE_KEY=... # base64url, 32 байта
+VAPID_PUBLIC_KEY=...   # base64url, 65 байт
+VAPID_PRIVATE_KEY=...  # base64url, 32 байта
 VAPID_SUBJECT=mailto:admin@твой-домен
 ```
 
@@ -189,8 +189,8 @@ curl "https://ТВОЙ-ДОМЕН/api/admin/reports?key=$ADMIN_KEY&status=all"
 
 # решения: dismiss (отклонить), hide (скрыть анкету), restore (вернуть и обнулить счётчик)
 curl -X POST https://ТВОЙ-ДОМЕН/api/admin/report-resolve \
- -H 'Content-Type: application/json' \
- -d '{"key":"'"$ADMIN_KEY"'","report_id":12,"decision":"restore"}'
+  -H 'Content-Type: application/json' \
+  -d '{"key":"'"$ADMIN_KEY"'","report_id":12,"decision":"restore"}'
 ```
 
 Без `ADMIN_KEY` эндпоинты модерации отвечают `403` — если ключ не задан, разбор жалоб просто недоступен, но автоскрытие и блокировки продолжают работать.
@@ -221,7 +221,7 @@ curl -X POST https://ТВОЙ-ДОМЕН/api/admin/report-resolve \
 
 ```bash
 chmod +x launcher/start.sh launcher/stop.sh
-./launcher/start.sh # откроет окно приложения
+./launcher/start.sh          # откроет окно приложения
 ```
 
 Иконка в меню приложений (Linux): `cp launcher/squadup.desktop ~/.local/share/applications/` (проверь пути внутри файла).

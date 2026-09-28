@@ -143,24 +143,6 @@ def build_theme_css(tokens: dict) -> str:
     return "\n".join(lines)
 
 
-def install_covers(check: bool) -> None:
-    """Свои постеры игр: design/covers/<id>.(jpg|png|webp) → static/covers/.
-    Файл с именем = id игры из каталога (cs2.jpg, dota2.jpg, valorant.jpg…) перекрывает
-    официальную обложку. Пропорции лучше 2:3 (например 1200×1800)."""
-    src = os.path.join(DESIGN, "covers")
-    dst = os.path.join(STATIC, "covers")
-    files = [f for f in os.listdir(src) if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))] if os.path.isdir(src) else []
-    if not files:
-        notes.append("своих постеров игр нет — оставляю официальные обложки")
-        return
-    if not check:
-        os.makedirs(dst, exist_ok=True)
-    for f in files:
-        if not check:
-            shutil.copy2(os.path.join(src, f), os.path.join(dst, f))
-    done.append(f"постеры игр: {len(files)} шт. → /covers/ ({', '.join(sorted(files)[:6])}{'…' if len(files) > 6 else ''})")
-
-
 def install_fonts(check: bool) -> None:
     src = os.path.join(DESIGN, "fonts")
     dst = os.path.join(STATIC, "fonts")
@@ -309,8 +291,6 @@ def main() -> int:
         installed.append(f"tokens.json: акцент {acc}, фон {bg}, шрифт {(tokens.get('fonts') or {}).get('stack', '—')[:40]}…")
 
     install_fonts(check)
-
-    install_covers(check)
     install_brand(check)
     install_ui_icons(check)
     update_manifest(check)

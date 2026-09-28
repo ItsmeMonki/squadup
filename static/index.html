@@ -213,7 +213,8 @@
  .card-id{min-width:0;flex:1}
  .nick{font-size:17px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
  .nick .age{font-weight:600;color:var(--muted);font-size:13px}
- .verif{color:var(--acc-2);font-size:13px;display:inline-flex}
+ .verif{color:var(--acc-2);font-size:10.5px;display:inline-flex;text-transform:uppercase;letter-spacing:.6px;
+ border:1px solid rgba(255,163,61,.45);border-radius:8px;padding:3px 7px;vertical-align:middle}
  .meta{color:var(--muted);font-size:12.8px;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
  .topic{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
  .tag{
@@ -361,7 +362,7 @@
  .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:14px;align-items:center}
  .modal-body{padding:22px}
  .modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
- .x-btn{background:transparent;border:1px solid var(--border);border-radius:10px;width:34px;height:34px;display:grid;place-items:center;color:var(--muted)}
+ .x-btn{background:transparent;border:1px solid var(--border);border-radius:10px;padding:8px 13px;color:var(--muted);font-size:12.5px;font-weight:600}
  .x-btn:hover{color:#fff;border-color:var(--border-strong)}
  .prof-hero{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
  .prof-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:18px 0}
@@ -395,9 +396,10 @@
 
  /* ---------- отзывы ---------- */
  .stars{display:flex;gap:5px}
- .stars button{background:transparent;border:0;font-size:26px;line-height:1;color:#3d3a35;padding:0;transition:.12s}
- .stars button:hover{transform:scale(1.12)}
- .stars button.on{color:var(--amber);text-shadow:0 0 14px rgba(255,199,90,.5)}
+ .stars button{background:transparent;border:1px solid var(--border);border-radius:10px;width:38px;height:38px;
+ font-size:14.5px;font-weight:700;line-height:1;color:var(--muted);padding:0;transition:.12s}
+ .stars button:hover{color:var(--text);border-color:var(--border-strong)}
+ .stars button.on{color:#0a0704;background:var(--amber);border-color:var(--amber)}
  .copy-tag{
  display:inline-flex;align-items:center;gap:9px;border:1px dashed var(--border-strong);border-radius:11px;
  padding:8px 12px;font-size:13.2px;background:rgba(0,0,0,.26);color:#d6d1ca;margin-top:10px
@@ -420,10 +422,6 @@
  @media (max-width:980px){
  /* --- шапка: компактнее и без переноса на вторую строку --- */
  .head-in{gap:10px;padding:10px 14px}
- #nav{order:3;flex:1 0 100%!important;width:auto;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
- #nav::-webkit-scrollbar{display:none}
- .nav-btn{flex:none}
- .user-chip{margin-left:auto}
  nav{order:3;width:100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
  nav::-webkit-scrollbar{display:none}
  .nav-btn{white-space:nowrap;padding:8px 12px;font-size:13.5px}
@@ -484,201 +482,16 @@
  @media (max-width:520px){
  .composer{gap:8px}
  .composer .btn{padding:12px 14px;font-size:13.5px}
- .composer .send-label{display:none}
  .bubble{max-width:86%}
  .card-foot{flex-direction:column;align-items:stretch;gap:10px}
  .card-foot .actions{justify-content:flex-end}
  .actions{flex-wrap:wrap}
  .results-info{font-size:12.8px}
  }
-/* ==========================================================================
-   СТИЛЬ «ИНДЕКС» — по референсу aristidebenoist.com
-   Чёрный холст, волосяные линии 1px, моно-лейблы капсом, крупная типографика,
-   постеры в цвете, никаких градиентов, теней и скруглений.
-   ========================================================================== */
-:root{
-  --hair:rgba(255,255,255,.13);
-  --hair-soft:rgba(255,255,255,.07);
-  --hair-strong:rgba(255,255,255,.34);
-  --ink:#f4f4f4;
-  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
-  --canvas:#050505;
-}
-html,body{background:var(--canvas)}
-body{color:var(--ink)}
-.bg-fx{display:none}
-
-/* моно-лейбл: мелкий капс с широким трекингом */
-.mono,.lbl,.tag,.chip,.seg button,.nav-btn,.stat span,.mini span,.meta,
-.page-title+.page-sub,.verif,.age,.results-info{font-family:var(--mono)}
-.lbl,.mono{text-transform:uppercase;letter-spacing:.16em;font-size:10.5px;color:var(--muted)}
-
-/* чистка прошлой «мягкой» темы */
-.card,.panel,.filters,.lfg,.modal,.squad-card,.chat-list,.chat-win,.gchip,.btn,
-.inp,.field,.field select,.field input,.avatar,.stat,.mini,.seg,.dropdown,.toast{
-  border-radius:0!important;box-shadow:none!important;background-image:none!important;
-}
-.card,.panel,.filters,.lfg,.squad-card,.chat-list,.chat-win,.stat,.mini{
-  background:transparent!important;border:0!important;border-top:1px solid var(--hair)!important;
-}
-.btn{background:transparent!important;border:1px solid var(--hair-strong)!important;color:var(--ink)!important;
-  text-transform:uppercase;letter-spacing:.1em;font-size:11.5px!important;font-weight:600!important;padding:11px 16px!important}
-.btn:hover{background:rgba(255,255,255,.06)!important}
-.btn.primary{background:var(--acc)!important;border-color:var(--acc)!important;color:#0a0704!important}
-.btn.primary:hover{background:#ff7f1f!important}
-.btn.ghost{border-color:var(--hair)!important}
-.card{padding:22px 0!important}
-.card.mine{border-top-color:var(--acc)!important}
-.hero h1 em{background:none!important;-webkit-text-fill-color:currentColor!important;color:var(--acc)!important}
-.hero{border:0!important;border-bottom:1px solid var(--hair)!important;padding:0 0 26px!important;margin:0 0 26px!important}
-.page-title,.hero h1{text-transform:none;letter-spacing:-.03em;font-weight:800}
-.gchip{border:1px solid var(--hair)!important;background:transparent!important;letter-spacing:.1em}
-.tag{border:1px solid var(--hair)!important;background:transparent!important;text-transform:uppercase;letter-spacing:.12em;font-size:10px}
-.tag.you,.tag.comp,.tag.coop{background:transparent!important;color:var(--muted)!important;border-color:var(--hair)!important}
-.lfg-pulse{border-radius:0!important}
-.avatar,.online-dot{border-radius:0!important}
-.chat-item.active{background:rgba(255,255,255,.05)!important}
-.bubble.me{background:var(--acc)!important;color:#0a0704!important;border-radius:0!important}
-.bubble{background:rgba(255,255,255,.06)!important;border-radius:0!important}
-
-/* ---------- ПРИЁМНАЯ (регистрация первым экраном) ---------- */
-.gate{position:fixed;inset:0;z-index:300;background:var(--canvas);display:none;overflow:auto}
-.gate.on{display:block}
-.gate-in{min-height:100%;display:grid;grid-template-columns:1fr 1fr;gap:0}
-.gate-side{padding:44px 5vw 44px;border-right:1px solid var(--hair);display:flex;flex-direction:column;justify-content:space-between}
-.gate-main{padding:44px 5vw;display:flex;flex-direction:column;justify-content:center}
-.gate-mark{font-size:clamp(44px,9vw,120px);font-weight:800;letter-spacing:-.045em;line-height:.9;text-transform:uppercase}
-.gate-mark em{font-style:normal;color:var(--acc)}
-.gate-tag{margin-top:22px;max-width:460px;color:var(--muted);font-size:15.5px;line-height:1.5}
-.gate-rows{margin-top:26px;display:flex;gap:0;flex-wrap:wrap}
-.gate-rows div{border-top:1px solid var(--hair);padding:12px 22px 12px 0;margin-right:22px;min-width:120px}
-.gate-rows b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em}
-.gate-rows span{font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;font-size:9.5px;color:var(--muted-2)}
-.gate-field{border-bottom:1px solid var(--hair-strong);padding-bottom:6px;margin:26px 0 0;max-width:420px}
-.gate-field input{width:100%;background:none;border:0;outline:none;color:var(--ink);
-  font-size:clamp(22px,3vw,34px);font-weight:700;letter-spacing:-.02em;padding:6px 0}
-.gate-field input::placeholder{color:rgba(255,255,255,.22)}
-.gate-actions{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
-.gate-note{margin-top:20px;color:var(--muted-2);font-size:12.5px;max-width:420px;line-height:1.6}
-.gate-foot{border-top:1px solid var(--hair);padding-top:16px;margin-top:30px;display:flex;justify-content:space-between;
-  gap:12px;flex-wrap:wrap;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;font-size:9.5px;color:var(--muted-2)}
-@media (max-width:860px){
-  .gate-in{grid-template-columns:1fr}
-  .gate-side{border-right:0;border-bottom:1px solid var(--hair);padding-bottom:26px}
-  .gate-side .gate-rows{display:none}
-}
-
-/* ---------- СТЕНА ИГР ---------- */
-.wall-head{padding:34px 0 22px;border-bottom:1px solid var(--hair);margin-bottom:22px}
-.wall-title{font-size:clamp(34px,7vw,76px);font-weight:800;letter-spacing:-.045em;line-height:.95;text-transform:uppercase;margin:0}
-.wall-sub{margin-top:14px;display:flex;gap:22px;flex-wrap:wrap;font-family:var(--mono);text-transform:uppercase;
-  letter-spacing:.14em;font-size:10px;color:var(--muted-2)}
-.wall-search{display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--hair-strong);padding:10px 0;margin:22px 0 0}
-.wall-search input{flex:1;background:none;border:0;outline:none;color:var(--ink);
-  font-size:clamp(18px,2.4vw,28px);font-weight:700;letter-spacing:-.02em}
-.wall-search input::placeholder{color:rgba(255,255,255,.24)}
-.wall-search .idx{font-family:var(--mono);font-size:11px;color:var(--muted-2);letter-spacing:.1em;white-space:nowrap}
-.wall-cats{display:flex;gap:0;flex-wrap:wrap;margin:18px 0 26px;border-top:1px solid var(--hair-soft)}
-.wall-cats button{background:none;border:0;border-bottom:1px solid transparent;color:var(--muted);
-  font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;font-size:10px;padding:12px 14px 10px 0;margin-right:14px;cursor:pointer}
-.wall-cats button:hover{color:var(--ink)}
-.wall-cats button.on{color:var(--acc);border-bottom-color:var(--acc)}
-.wall-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--hair-soft);border:1px solid var(--hair-soft)}
-@media (max-width:1180px){.wall-grid{grid-template-columns:repeat(4,1fr)}}
-@media (max-width:880px){.wall-grid{grid-template-columns:repeat(3,1fr)}}
-@media (max-width:600px){.wall-grid{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:360px){.wall-grid{grid-template-columns:1fr}}
-.poster{position:relative;background:var(--canvas);cursor:pointer;overflow:hidden;display:block;
-  border:0;padding:0;text-align:left;color:inherit;font:inherit}
-.poster .ph{position:relative;aspect-ratio:2/3;background:#0d0d0d;overflow:hidden}
-.poster .ph img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(1.06) contrast(1.02);
-  transition:transform .7s cubic-bezier(.2,.75,.2,1),opacity .4s;opacity:0}
-.poster .ph img.ready{opacity:1}
-.poster:hover .ph img{transform:scale(1.045)}
-.poster .ph .type{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:14px}
-.poster .ph .type b{font-size:clamp(17px,1.5vw,23px);font-weight:800;letter-spacing:-.03em;line-height:.98;text-transform:uppercase}
-.poster .ph .type span{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.poster .ph .type b{font-size:clamp(19px,1.7vw,27px)}
-.poster .ph::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent 34%,transparent 42%,rgba(0,0,0,.86));pointer-events:none}
-.poster .no{position:absolute;top:12px;left:14px;z-index:2;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:rgba(255,255,255,.8)}
-.poster .cap{display:block;padding:11px 12px 13px;border-top:1px solid var(--hair-soft)}
-.poster .cap b{display:block;font-size:12.5px;font-weight:600;letter-spacing:.01em;line-height:1.25;
-  color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.poster .cap .fig{display:block;margin-top:5px;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--muted-2);transition:color .3s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.poster:hover .cap .fig,.poster:focus-visible .cap .fig{color:var(--ink)}
-.poster .cap .fig i{font-style:normal;color:var(--acc)}
-.poster.chosen .ph{outline:1px solid var(--acc);outline-offset:-1px}
-.wall-none{grid-column:1/-1;padding:60px 20px;text-align:center;color:var(--muted);font-family:var(--mono);
-  text-transform:uppercase;letter-spacing:.16em;font-size:11px}
-
-/* ---------- ЭКОСИСТЕМА ИГРЫ ---------- */
-.ghero{position:relative;border-bottom:1px solid var(--hair);margin:0 0 26px;overflow:hidden}
-.ghero-img{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.5}
-.ghero-img::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,5,5,.96) 12%,rgba(5,5,5,.62) 60%,rgba(5,5,5,.9))}
-.ghero-in{position:relative;padding:34px 0 30px;display:flex;gap:26px;align-items:flex-end;flex-wrap:wrap}
-.ghero-poster{width:118px;flex:none;aspect-ratio:2/3;border:1px solid var(--hair);overflow:hidden;background:#0d0d0d}
-.ghero-poster img{width:100%;height:100%;object-fit:cover;display:block}
-.ghero-poster .type{padding:12px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:-.02em}
-.ghero-txt{flex:1;min-width:240px}
-.ghero-kicker{font-family:var(--mono);text-transform:uppercase;letter-spacing:.16em;font-size:10px;color:var(--acc)}
-.ghero-title{font-size:clamp(30px,5.4vw,64px);font-weight:800;letter-spacing:-.045em;line-height:.94;margin:10px 0 0;text-transform:uppercase}
-.ghero-meta{margin-top:12px;display:flex;gap:20px;flex-wrap:wrap;font-family:var(--mono);text-transform:uppercase;
-  letter-spacing:.13em;font-size:10px;color:var(--muted)}
-.ghero-figs{display:flex;gap:0;flex-wrap:wrap;margin-top:18px}
-.ghero-figs div{border-top:1px solid var(--hair-strong);padding:10px 20px 0 0;margin-right:20px}
-.ghero-figs b{display:block;font-size:24px;font-weight:800;letter-spacing:-.02em}
-.ghero-figs span{font-family:var(--mono);text-transform:uppercase;letter-spacing:.13em;font-size:9.5px;color:var(--muted-2)}
-.ghero-act{display:flex;gap:10px;flex-wrap:wrap;padding-bottom:4px}
-.lfg-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}
-.lfg-head b{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
-#lfgTitle{white-space:nowrap}
-@media (max-width:520px){
-  .lfg-head b{font-size:15px}
-  #lfgTitle{white-space:normal}
-}
-
-@media (max-width:700px){
-  .ghero-in{flex-direction:column;align-items:flex-start;gap:18px;padding:22px 0}
-  .ghero-poster{width:92px}
-  .ghero-title{font-size:clamp(26px,8.5vw,40px)}
-  .ghero-figs{gap:0}
-  .ghero-figs b{font-size:20px}
-  .ghero-act{width:100%}
-  .ghero-act .btn{flex:1;text-align:center;justify-content:center}
-  .wall-title{font-size:clamp(30px,10vw,52px)}
-  .wall-head{padding:22px 0 16px}
-  .wall-search input{font-size:16px}
- .wall-sub{gap:6px 16px;font-size:9px}
- .wall-sub span{white-space:nowrap}
-}
-/* навигация в стиле индекса */
-#nav{gap:0!important}
-.nav-btn{background:none!important;border:0!important;border-bottom:1px solid transparent!important;border-radius:0!important;
-  padding:8px 12px 6px!important;text-transform:uppercase;letter-spacing:.14em;font-size:10.5px!important;color:var(--muted)!important}
-.nav-btn:hover{color:var(--ink)!important}
-.nav-btn.active{color:var(--ink)!important;border-bottom-color:var(--acc)!important;background:none!important}
-.nav-btn .dot{background:var(--acc)!important;color:#0a0704!important;border-radius:0!important}
-header{background:rgba(5,5,5,.92)!important;border-bottom:1px solid var(--hair)!important}
-.logo-mark{border-radius:0!important;background:var(--acc)!important;color:#0a0704!important}
-.logo-txt b{letter-spacing:.02em}
-.logo-txt span{font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;font-size:8.5px}
-.user-chip{border:1px solid var(--hair)!important;border-radius:0!important}
-.dropdown{border-radius:0!important;background:#0a0a0a!important;border:1px solid var(--hair)!important}
-.toast{border-radius:0!important;background:#0a0a0a!important;border:1px solid var(--hair-strong)!important}
-@media (min-width:900px){
-  #toasts{left:auto!important;right:20px!important;bottom:auto!important;top:74px!important;max-width:380px}
-}
-/* читаемость подписей на светлых обложках */
-.poster .cap b,.poster .cap .fig{text-shadow:0 1px 12px rgba(0,0,0,.55)}
-.toast.ok{border-left:3px solid var(--acc)!important}
-.spin{border-radius:0!important}
-
 </style>
 </head>
 <body>
 <div class="bg-fx"></div>
-<div class="gate" id="gate"></div>
 
 <header>
  <div class="head-in">
@@ -687,8 +500,7 @@ header{background:rgba(5,5,5,.92)!important;border-bottom:1px solid var(--hair)!
  <div class="logo-txt"><b>SQUADUP</b><span>поиск тиммейтов</span></div>
  </div>
  <nav id="nav">
- <button class="nav-btn" data-go="games"><span>Игры</span></button>
-        <button class="nav-btn active" data-go="search"><span>Поиск</span></button>
+ <button class="nav-btn active" data-go="search"><span>Поиск</span></button>
  <button class="nav-btn" data-go="squads"><span>Сквады</span></button>
  <button class="nav-btn" data-go="chats"><span>Чаты</span><span class="dot" id="unreadBadge" style="display:none">0</span></button>
  <button class="nav-btn" data-go="profile"><span>Моя анкета</span></button>
@@ -712,32 +524,18 @@ header{background:rgba(5,5,5,.92)!important;border-bottom:1px solid var(--hair)!
 
 <main>
  <!-- ===================== ПОИСК ===================== -->
- <section class="view" id="view-games">
- <div class="wall-head">
- <h1 class="wall-title">Выбери игру</h1>
- <div class="wall-sub">
- <span><b id="wallGames">40</b> игр в каталоге</span>
- <span><b id="wallPlayers">90</b> анкет игроков</span>
- <span><b id="wallOnline">0</b> онлайн сейчас</span>
- <span>нажми на постер — попадёшь в экосистему игры</span>
+ <section class="view active" id="view-search">
+ <div class="hero">
+ <div>
+ <h1>Найди своих <em>тиммейтов</em> — в&nbsp;кооперативе и&nbsp;в&nbsp;ранкеде</h1>
+ <p>Анкеты живых игроков по <b id="gamesCount">40</b> играм: фильтруй по игре, режиму, платформе, региону, рангу и ролям. Пиши напрямую во встроенном чате и собирай пати за пару минут.</p>
  </div>
+ <div class="stats" id="statsBox"></div>
  </div>
- <div class="wall-search">
- <span class="idx">Поиск</span>
- <input id="gameSearch" placeholder="Введи название — CS2, Dota, Valorant…" autocomplete="off">
- <span class="idx" id="wallFound"></span>
- </div>
- <div class="wall-cats" id="wallCats"></div>
- <div class="wall-grid" id="wallGrid"><div class="wall-none">Загрузка каталога…</div></div>
-</section>
-
-<!-- ===================== ЭКОСИСТЕМА ИГРЫ ===================== -->
-<section class="view active" id="view-search">
- <div class="ghero" id="gameHero"></div>
 
  <div class="lfg">
  <div class="lfg-head">
- <b><span class="lfg-pulse"></span> <span id="lfgTitle">Сейчас ищут компанию</span> <span class="hint" id="lfgCount"></span></b>
+ <b><span class="lfg-pulse"></span> Сейчас ищут компанию <span class="hint" id="lfgCount"></span></b>
  <button class="btn primary" id="lfgToggle">Я готов играть</button>
  </div>
  <div class="lfg-row" id="lfgRow"><div class="lfg-empty">Загрузка…</div></div>
@@ -749,7 +547,7 @@ header{background:rgba(5,5,5,.92)!important;border-bottom:1px solid var(--hair)!
  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
  <input id="fq" placeholder="Поиск по нику или описанию…">
  </div>
- <div class="field" id="fgameWrap" style="display:none">
+ <div class="field">
  <select id="fgame"><option value="">Любая игра</option></select>
  </div>
  <div class="seg" id="fmode">
@@ -797,7 +595,7 @@ header{background:rgba(5,5,5,.92)!important;border-bottom:1px solid var(--hair)!
  </div>
  <div class="filters">
  <div class="filters-row">
- <div class="field grow"><button class="btn ghost" id="squadsScope" onclick="toggleSquadsScope()">Все игры</button></div>
+ <div class="field grow"><select id="sgame"><option value="">Все игры</option></select></div>
  <div class="field grow"><select id="sregion"><option value="">Все регионы</option></select></div>
  </div>
  </div>
@@ -923,9 +721,6 @@ const state = {
  pollTimer: null,
  chatMeta: new Map(),
  loginRequired: false,
- gameId: localStorage.getItem('squadup_game') || null,
- gameStats: {},
- squadsAll: false,
  cfg: { discord_enabled: false, push_enabled: false },
  push: { available: false, subscribed: false, devices: 0, permission: 'default' },
  outbox: [],
@@ -1015,16 +810,13 @@ function toast(msg, kind = '', actions = []) {
 
 /* ---------- навигация ---------- */
 function go(view) {
- // экосистема без выбранной игры невозможна — отправляем на стену игр
- if (view === 'search' && !state.gameId) view = 'games';
  $$('.view').forEach(v => v.classList.remove('active'));
  $('#view-' + view).classList.add('active');
  $$('#nav .nav-btn').forEach(b => b.classList.toggle('active', b.dataset.go === view));
  $('#userMenu').classList.remove('open');
  if (view === 'chats') { loadChats(); startPolling(); } else { stopPolling(); }
  if (view === 'squads') loadSquads();
- if (view === 'games') loadGameWall();
- if (view === 'search') { renderGameHero(); loadPlayers(); loadLooking(); }
+ if (view === 'search') loadLooking();
  if (view === 'profile') loadBlockedList();
  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1032,55 +824,32 @@ $$('#nav .nav-btn').forEach(b => b.onclick = () => go(b.dataset.go));
 $('#userChip').onclick = e => { e.stopPropagation(); $('#userMenu').classList.toggle('open'); };
 document.addEventListener('click', () => $('#userMenu').classList.remove('open'));
 
-/* ---------- приёмная: регистрация первым экраном ---------- */
-function renderGate() {
- const cfg = state.cfg || {};
- const discord = cfg.discord_enabled ? `
- <button class="btn" style="border-color:#5865F2!important;color:#b8c0ff!important"
- onclick="location.href='/api/auth/discord/login'">Войти через Discord</button>` : '';
- $('#gate').innerHTML = `
- <div class="gate-in">
- <div class="gate-side">
- <div>
- <div class="gate-mark">Squad<em>up</em></div>
- <p class="gate-tag">Тиммейты по 40 играм: кооп, ранкед, сквады и чаты.
- Один ник — и ты в игре.</p>
- <div class="gate-rows">
- <div><b id="gateGames">40</b><span>игр в каталоге</span></div>
- <div><b id="gatePlayers">—</b><span>анкет игроков</span></div>
- <div><b id="gateOnline">—</b><span>онлайн сейчас</span></div>
+/* ---------- авторизация ---------- */
+function requireLogin() {
+ const discordBlock = state.cfg.discord_enabled ? `
+ <div style="display:flex;align-items:center;gap:12px;margin:18px 0">
+ <div style="flex:1;height:1px;background:var(--border)"></div>
+ <span class="hint">или</span>
+ <div style="flex:1;height:1px;background:var(--border)"></div>
  </div>
+ <button class="btn" style="width:100%;background:#5865F2;border-color:transparent;color:#fff"
+ onclick="location.href='/api/auth/discord/login'">Войти через Discord</button>
+ <p class="hint">Надёжный вход: ник подтянется из Discord, пароль не нужен.</p>` : `
+ <p class="hint"> Discord-вход включается переменными <code>DISCORD_CLIENT_ID</code> и
+ <code>DISCORD_CLIENT_SECRET</code> на сервере — см. DEPLOY.md.</p>`;
+ openModal(`
+ <div class="modal-head"><h3>Вход в SQUADUP</h3></div>
+ <div class="modal-body">
+ <p class="hint" style="margin-top:0">Придумай ник — под ним тебя будут видеть другие игроки. Пароль не нужен.</p>
+ <label class="lbl">Твой ник</label>
+ <input class="inp" id="loginNick" placeholder="Например: NightRaven" maxlength="32" autocomplete="off">
+ <div id="loginErr" style="color:var(--acc-3);font-size:13px;margin-top:8px"></div>
+ ${discordBlock}
  </div>
- <div class="gate-foot"><span>SQUADUP — поиск тиммейтов</span><span>Регистрация: один ник, без пароля</span></div>
- </div>
- <div class="gate-main">
- <label class="lbl">Шаг 1 — регистрация</label>
- <div class="gate-field">
- <input id="loginNick" placeholder="Твой ник" maxlength="32" autocomplete="off">
- </div>
- <div id="loginErr" style="color:var(--acc-3);font-size:13px;margin-top:10px"></div>
- <div class="gate-actions">
- <button class="btn primary" onclick="doLogin()">Войти и искать тиммейтов</button>
- ${discord}
- </div>
- <p class="gate-note">Ник увидят другие игроки — под ним ты появляешься в поиске и в чатах.
- Дальше выберешь игру и попадёшь в её экосистему. Пароль не нужен: вход по нику, данные можно
- выгрузить или удалить в любой момент.</p>
- </div>
- </div>`;
- $('#gate').classList.add('on');
- refreshGateStats();
- setTimeout(() => { const i = $('#loginNick'); if (i) i.focus(); }, 80);
+ <div class="modal-foot"><button class="btn primary" onclick="doLogin()">Войти и искать тиммейтов</button></div>
+ `);
+ setTimeout(() => { const i = $('#loginNick'); if (i) i.focus(); }, 60);
 }
-async function refreshGateStats() {
- try {
- const s = await api('/api/stats');
- const set = (id, v) => { const el = $('#' + id); if (el) el.textContent = v; };
- set('gateGames', s.games); set('gatePlayers', s.total); set('gateOnline', s.online);
- } catch (e) {}
-}
-function requireLogin() { renderGate(); }
-function closeGate() { $('#gate').classList.remove('on'); }
 
 /* ---------- установка приложения (PWA) ---------- */
 async function installApp() {
@@ -1100,17 +869,17 @@ async function installApp() {
  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
  const isDesktop = !isIOS && !isAndroid;
  if (isIOS || isSafari) {
- toast('iPhone/Safari: «Поделиться» → «На экран „Домой“» — иконка SQUADUP появится на телефоне');
+ toast('iPhone/Safari: «Поделиться», затем «На экран „Домой“» — иконка SQUADUP появится на телефоне');
  } else if (isAndroid) {
- toast('Android/Chrome: меню браузера → «Установить приложение» → «Установить»');
+ toast('Android/Chrome: меню браузера, пункт «Установить приложение», затем «Установить»');
  } else if (isDesktop) {
  openModal(`
  <div class="modal-head"><h3>Установить SQUADUP на этот компьютер</h3>
- <button class="x-btn" onclick="closeModal()">✕</button></div>
+ <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
  <div class="modal-body">
  <p style="margin-top:0"><b>Вариант 1 — установить прямо из браузера (Chrome, Edge, Brave):</b></p>
  <ol style="color:#c2c7dc;font-size:14px;padding-left:20px;margin:8px 0 16px">
- <li>В адресной строке нажми иконку <b>«Установить»</b> (справа) — или меню браузера → «Установить SQUADUP…».</li>
+ <li>В адресной строке нажми иконку <b>«Установить»</b> (справа) — или меню браузера, пункт «Установить SQUADUP…».</li>
  <li>Подтверди — приложение появится в меню «Пуск» / Launchpad / доке, отдельным окном и со своей иконкой.</li>
  </ol>
  <p><b>Вариант 2 — ярлык на рабочем столе (работает даже без установки в браузер):</b></p>
@@ -1172,16 +941,12 @@ async function doLogin() {
  state.token = r.token;
  localStorage.setItem('squadup_token', r.token);
  closeModal();
- closeGate();
  await bootstrapUser();
- await loadGameWall();
- go('games');
  toast('Добро пожаловать, <b>' + esc(r.nickname) + '</b>! Демо-анкеты уже загружены — ищи своих.', 'ok');
  } catch (e) { $('#loginErr').textContent = e.message; }
 }
 function logout() {
  localStorage.removeItem('squadup_token');
- localStorage.removeItem('squadup_game');
  state.token = null; state.me = null;
  $('#userChip').style.display = 'none';
  location.reload();
@@ -1200,159 +965,24 @@ function closeModal() {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-/* ---------- стена игр (референс: aristidebenoist.com) ---------- */
-function currentGame() {
- return (state.meta && state.meta.games || []).find(g => g.id === state.gameId) || null;
-}
-function gameModes(g) {
- const L = (state.meta && state.meta.modes) || {};
- return g.modes.map(m => L[m] || m).join(' · ');
-}
-function gamePlatforms(g) {
- const L = (state.meta && state.meta.platforms) || {};
- return g.platforms.map(p => L[p] || p).join(' · ');
-}
-function statOf(gid) { return (state.gameStats && state.gameStats[gid]) || {}; }
-
-const WALL_CATS = [
- { id: 'all', label: 'Все', test: () => true },
- { id: 'coop', label: 'Кооп', test: g => g.modes.includes('coop') },
- { id: 'comp', label: 'Соревновательные', test: g => g.modes.includes('comp') },
- { id: 'shooter', label: 'Шутеры', test: g => /Шутер|шутер/i.test(g.genre) },
- { id: 'moba', label: 'MOBA', test: g => /MOBA/i.test(g.genre) },
- { id: 'surv', label: 'Выживание', test: g => /Выживание|Песочница/i.test(g.genre) },
- { id: 'mmo', label: 'MMO', test: g => /MMO|Looter/i.test(g.genre) },
- { id: 'sport', label: 'Спорт', test: g => /Спорт/i.test(g.genre) },
-];
-let wallCat = 'all';
-
-async function loadGameWall() {
- try {
- const d = await api('/api/game-stats');
- state.gameStats = d.by_game || {};
- } catch (e) { state.gameStats = {}; }
- try {
- const s = await api('/api/stats');
- const set = (id, v) => { const el = $('#' + id); if (el) el.textContent = v; };
- set('wallGames', s.games); set('wallPlayers', s.total); set('wallOnline', s.online);
- set('gateGames', s.games); set('gatePlayers', s.total); set('gateOnline', s.online);
- } catch (e) {}
- renderWall();
-}
-function renderWallCats() {
- const el = $('#wallCats'); if (!el) return;
- el.innerHTML = WALL_CATS.map(c =>
- `<button data-cat="${c.id}" class="${c.id === wallCat ? 'on' : ''}">${c.label}</button>`).join('');
- el.querySelectorAll('button').forEach(b => b.onclick = () => {
- wallCat = b.dataset.cat; renderWallCats(); renderWall();
- });
-}
-function matchingGames() {
- const q = ($('#gameSearch') ? $('#gameSearch').value : '').trim().toLowerCase();
- const cat = WALL_CATS.find(c => c.id === wallCat) || WALL_CATS[0];
- const all = (state.meta && state.meta.games) || [];
- return all.filter(g => {
- if (!cat.test(g)) return false;
- if (!q) return true;
- return (g.name + ' ' + g.short + ' ' + g.genre).toLowerCase().includes(q);
- });
-}
-function posterHTML(g, num) {
- const st = statOf(g.id);
- const img = g.cover
- ? `<img src="${g.cover}" alt="${esc(g.name)}" loading="lazy" referrerpolicy="no-referrer"
- onload="this.classList.add('ready')" onerror="this.parentNode.classList.add('noimg');this.remove()">`
- : '';
- const type = g.cover ? '' : `<div class="type"><span>${esc(g.short)}</span><b>${esc(g.name)}</b><span>${esc(g.genre)}</span></div>`;
- return `<button class="poster${g.id === state.gameId ? ' chosen' : ''}" onclick="pickGame('${g.id}')" title="${esc(g.name)}">
- <div class="ph">${img}${type}</div>
- <span class="no">${String(num).padStart(2, '0')}</span>
- <span class="cap"><b>${esc(g.name)}</b>
- <span class="fig">${esc(g.genre)}${st.players ? ` · <i>${st.players}</i> анкет` : ''}${st.looking ? ` · <i>${st.looking}</i> ищут` : ''}${st.squads ? ` · <i>${st.squads}</i> скв.` : ''}</span>
- </span>
- </button>`;
-}
-function renderWall() {
- const grid = $('#wallGrid'); if (!grid || !state.meta) return;
- const all = state.meta.games;
- const list = matchingGames();
- $('#wallFound').textContent = list.length + ' / ' + all.length;
- grid.innerHTML = list.length
- ? list.map(g => posterHTML(g, all.indexOf(g) + 1)).join('')
- : '<div class="wall-none">Ничего не нашлось — попробуй другое название</div>';
-}
-async function pickGame(id) {
- state.gameId = id;
- localStorage.setItem('squadup_game', id);
- const input = $('#gameSearch'); if (input) input.value = '';
- const g = currentGame();
- go('search');
- toast('Игра выбрана: <b>' + esc(g ? g.name : '') + '</b> — вот её экосистема', 'ok');
-}
-function renderGameHero() {
- const navBtn = document.querySelector('#nav .nav-btn[data-go="search"] span');
- if (navBtn) navBtn.textContent = currentGame() ? currentGame().short : 'Игра';
- const el = $('#gameHero'); if (!el) return;
- const g = currentGame();
- if (!g) { el.innerHTML = '<div class="wall-none">Выбери игру на стене</div>'; return; }
- const st = statOf(g.id);
- const wrap = $('#fgameWrap'); if (wrap) wrap.style.display = 'none';
- el.innerHTML = `
- ${g.hero ? `<div class="ghero-img" style="background-image:url('${g.hero}')"></div>` : ''}
- <div class="ghero-in">
- <div class="ghero-poster">${g.cover
- ? `<img src="${g.cover}" alt="${esc(g.name)}" referrerpolicy="no-referrer">`
- : `<div class="type"><b>${esc(g.name)}</b></div>`}</div>
- <div class="ghero-txt">
- <div class="ghero-kicker">Экосистема игры</div>
- <h2 class="ghero-title">${esc(g.name)}</h2>
- <div class="ghero-meta">
- <span>${esc(g.genre)}</span><span>${gameModes(g)}</span><span>${gamePlatforms(g)}</span>
- </div>
- <div class="ghero-figs">
- <div><b>${st.players || 0}</b><span>анкет</span></div>
- <div><b>${st.online || 0}</b><span>онлайн</span></div>
- <div><b>${st.looking || 0}</b><span>ищут компанию</span></div>
- <div><b>${st.squads || 0}</b><span>сквадов</span></div>
- </div>
- </div>
- <div class="ghero-act">
- <button class="btn primary" onclick="go('games')">Сменить игру</button>
- <button class="btn ghost" onclick="go('squads')">Сквады игры</button>
- </div>
- </div>`;
-}
-function toggleSquadsScope() {
- state.squadsAll = !state.squadsAll;
- loadSquads();
-}
-function renderSquadsScope() {
- const b = $('#squadsScope'); if (!b) return;
- const g = currentGame();
- if (!g) { b.textContent = 'Все игры'; b.disabled = true; return; }
- b.disabled = false;
- b.textContent = state.squadsAll ? 'Все игры' : 'Только ' + g.short;
- b.style.borderColor = state.squadsAll ? '' : 'var(--acc)';
- b.style.color = state.squadsAll ? '' : 'var(--acc)';
-}
-
 /* ---------- загрузка метаданных ---------- */
 async function loadMeta() {
  state.meta = await api('/api/games');
- const gsel = $('#fgame');
+ const gsel = $('#fgame'), ssel = $('#sgame');
  state.meta.games.forEach(g => {
  const modes = g.modes.map(m => modeIcon(m)).join('');
  const opt = `<option value="${g.id}">${esc(g.name)} — ${g.genre} ${modes}</option>`;
  gsel.insertAdjacentHTML('beforeend', opt);
+ ssel.insertAdjacentHTML('beforeend', `<option value="${g.id}">${esc(g.name)}</option>`);
  });
- const rgOpts = state.meta.regions.map(r => `<option value="${r.id}">${esc(r.label)}</option>`).join('');
+ const rgOpts = state.meta.regions.map(r => `<option value="${r.id}">${r.flag} ${esc(r.label)}</option>`).join('');
  $('#fregion').insertAdjacentHTML('beforeend', rgOpts);
- $('#sregion').insertAdjacentHTML('beforeend', rgOpts);
+ $('#sregion').insertAdjacentHTML('beforeend', state.meta.regions.map(r => `<option value="${r.id}">${r.flag} ${esc(r.label)}</option>`).join(''));
  $('#flang').insertAdjacentHTML('beforeend', state.meta.languages.map(l => `<option value="${esc(l)}"> ${esc(l)}</option>`).join(''));
  $('#fskill').insertAdjacentHTML('beforeend', Object.entries(state.meta.skills).map(([v, l]) => `<option value="${v}"> от «${esc(l)}»</option>`).join(''));
  $('#fvibe').insertAdjacentHTML('beforeend', Object.entries(state.meta.vibes).map(([v, l]) => `<option value="${v}"> ${esc(l)}</option>`).join(''));
  $('#fplatform').insertAdjacentHTML('beforeend', Object.entries(state.meta.platforms).map(([v, l]) => `<option value="${v}"> ${esc(l)}</option>`).join(''));
- $('#pRegion').innerHTML = rgOpts;
+ $('#pRegion').innerHTML = state.meta.regions.map(r => `<option value="${r.id}">${r.flag} ${esc(r.label)}</option>`).join('');
  $('#pSkill').innerHTML = Object.entries(state.meta.skills).map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
  $('#pVibe').innerHTML = Object.entries(state.meta.vibes).map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
  $('#pPlatforms').innerHTML = Object.entries(state.meta.platforms).map(([v, l]) =>
@@ -1474,7 +1104,7 @@ function renderPushInto(id) {
  : `<button class="btn sm primary" onclick="enablePush()">Включить уведомления</button>`}
  </div>
  </div>` + (p.permission === 'denied'
- ? '<p class="hint" style="margin:10px 0 0">Разреши уведомления в настройках браузера: иконка замка в адресной строке → «Уведомления» → «Разрешить».</p>' : '');
+ ? '<p class="hint" style="margin:10px 0 0">Разреши уведомления в настройках браузера: иконка замка в адресной строке, раздел «Уведомления», затем «Разрешить».</p>' : '');
 }
 
 async function enablePush() {
@@ -1531,7 +1161,7 @@ async function schedulePush() {
 async function openPushModal() {
  if (!state.token) return requireLogin();
  openModal(`
- <div class="modal-head"><h3>Уведомления</h3><button class="x-btn" onclick="closeModal()">✕</button></div>
+ <div class="modal-head"><h3>Уведомления</h3><button class="x-btn" onclick="closeModal()">Закрыть</button></div>
  <div class="modal-body">
  <div id="pushModalStatus"><div class="spin" style="margin:10px auto"></div></div>
  <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
@@ -1564,7 +1194,7 @@ function confirmDeleteAccount() {
  if (!state.token) return requireLogin();
  openModal(`
  <div class="modal-head"><h3 style="color:var(--acc-3)">Удалить аккаунт</h3>
- <button class="x-btn" onclick="closeModal()">✕</button></div>
+ <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
  <div class="modal-body">
  <p style="margin-top:0">Будут удалены <b>безвозвратно</b>:</p>
  <ul style="color:#c2c7dc;font-size:14px;padding-left:20px">
@@ -1675,13 +1305,10 @@ async function loadLooking() {
  if (!state.meta) return;
  try {
  const p = new URLSearchParams();
- if (state.gameId) p.set('game', state.gameId);
- else if ($('#fgame').value) p.set('game', $('#fgame').value);
+ if ($('#fgame').value) p.set('game', $('#fgame').value);
  if ($('#fregion').value) p.set('region', $('#fregion').value);
  const d = await api('/api/looking?' + p.toString());
  state.lfg = d;
- const cg = currentGame();
- $('#lfgTitle').textContent = cg ? 'Сейчас ищут компанию в ' + cg.short : 'Сейчас ищут компанию';
  const btn = $('#lfgToggle');
  if (d.me_looking) { btn.textContent = ' Завершить поиск'; btn.classList.add('on'); }
  else { btn.textContent = 'Я готов играть'; btn.classList.remove('on'); }
@@ -1796,8 +1423,7 @@ function currentFilters() {
  const p = new URLSearchParams();
  const v = (s) => $(s).value;
  if (v('#fq')) p.set('q', v('#fq'));
- if (state.gameId) p.set('game', state.gameId);
- else if (v('#fgame')) p.set('game', v('#fgame'));
+ if (v('#fgame')) p.set('game', v('#fgame'));
  const mode = $('#fmode button.on')?.dataset.v; if (mode) p.set('mode', mode);
  if (v('#fplatform')) p.set('platform', v('#fplatform'));
  if (v('#fregion')) p.set('region', v('#fregion'));
@@ -1858,7 +1484,7 @@ function renderCards(data) {
  </div>
  <div class="card-id">
  <div class="nick">${esc(p.nick)}<span class="age">${p.age} лет</span>
- ${p.verified ? '<span class="verif" title="Проверенный игрок">✔</span>' : ''}
+ ${p.verified ? '<span class="verif" title="Проверенный игрок">проверен</span>' : ''}
  </div>
  <div class="meta">
  <span>${esc(p.region_label)}</span>
@@ -1902,14 +1528,14 @@ async function openProfile(id) {
  openModal(`
  <div class="modal-head">
  <h3>Профиль игрока</h3>
- <button class="x-btn" onclick="closeModal()">✕</button>
+ <button class="x-btn" onclick="closeModal()">Закрыть</button>
  </div>
  <div class="modal-body">
  <div class="prof-hero">
  <div class="avatar a-96" style="${avatarStyle(p.nick)}">${esc(initials(p.nick))}</div>
  <div style="flex:1;min-width:210px">
  <div class="nick" style="font-size:22px">${esc(p.nick)}
- ${p.verified ? '<span class="verif">✔ проверен</span>' : ''}
+ ${p.verified ? '<span class="verif">проверен</span>' : ''}
  <span class="age">${p.age} лет</span></div>
  <div class="meta" style="margin-top:8px">
  <span>${esc(p.region_label)}</span>
@@ -1945,18 +1571,18 @@ async function openProfile(id) {
 
  <h3 style="font-size:15.5px;margin:18px 0 10px">Отзывы тиммейтов</h3>
  ${(p.reviews && p.reviews.length) ? p.reviews.map(r => `
- <div class="review"><b>${esc(r.author)}</b><span>${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)} · ${timeAgo(r.date)}</span>
+ <div class="review"><b>${esc(r.author)}</b><span>Оценка ${r.rating} из 5 · ${timeAgo(r.date)}</span>
  <p>${esc(r.text)}</p></div>`).join('') : '<p class="hint">Пока нет отзывов — стань первым, кто сыграет с этим игроком.</p>'}
 
  ${(!p.is_me && state.token) ? `
  <div style="margin-top:14px">
- ${p.my_review ? `<p class="hint">Твой отзыв: <b style="color:var(--amber)">${'★'.repeat(p.my_review.rating)}</b>${p.my_review.text ? ' — «' + esc(p.my_review.text) + '»' : ''}</p>` : ''}
+ ${p.my_review ? `<p class="hint">Твой отзыв: <b style="color:var(--amber)">${p.my_review.rating} из 5</b>${p.my_review.text ? ' — «' + esc(p.my_review.text) + '»' : ''}</p>` : ''}
  <button class="btn sm ${p.my_review ? 'ghost' : 'primary'}" onclick="toggleReviewForm()">
  ${p.my_review ? 'Изменить отзыв' : 'Оставить отзыв'}</button>
  <div id="reviewForm" style="display:none;margin-top:14px;border:1px solid var(--border);border-radius:14px;padding:14px;background:rgba(0,0,0,.2)">
- <label class="lbl">Оценка</label>
+ <label class="lbl">Оценка — от 1 до 5</label>
  <div class="stars" id="starRow">
- ${[1, 2, 3, 4, 5].map(n => `<button data-star="${n}" onclick="setReviewStar(${n})">★</button>`).join('')}
+ ${[1, 2, 3, 4, 5].map(n => `<button data-star="${n}" onclick="setReviewStar(${n})">${n}</button>`).join('')}
  </div>
  <label class="lbl" style="margin-top:13px">Комментарий</label>
  <textarea class="inp" id="revText" placeholder="Как игралось вместе? Был ли микрофон, вовремя ли пришёл…">${p.my_review ? esc(p.my_review.text || '') : ''}</textarea>
@@ -2017,7 +1643,7 @@ async function openReportModal(type, id, name) {
  fraud: 'Мошенничество, обман', adult: 'Неприемлемый контент', other: 'Другое' };
  try { const b = await api('/api/blocks'); reasons = b.reasons || reasons; } catch {}
  openModal(`
- <div class="modal-head"><h3> Жалоба на ${esc(name)}</h3><button class="x-btn" onclick="closeModal()">✕</button></div>
+ <div class="modal-head"><h3>Жалоба на ${esc(name)}</h3><button class="x-btn" onclick="closeModal()">Закрыть</button></div>
  <div class="modal-body">
  <label class="lbl">Причина</label>
  <select class="inp" id="repReason">
@@ -2056,7 +1682,7 @@ async function openInvite(id) {
  + (myContact ? ` Мой контакт: ${myContact}.` : '');
  openModal(`
  <div class="modal-head">
- <h3>Приглашение</h3><button class="x-btn" onclick="closeModal()">✕</button>
+ <h3>Приглашение</h3><button class="x-btn" onclick="closeModal()">Закрыть</button>
  </div>
  <div class="modal-body">
  <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px">
@@ -2129,7 +1755,7 @@ async function openChat(id) {
  <div class="msgs" id="msgs"></div>
  <div class="composer">
  <input id="msgInput" placeholder="Написать сообщение…" onkeydown="if(event.key==='Enter')sendMessage()">
- <button class="btn primary" onclick="sendMessage()"><span class="send-label">Отправить&nbsp;</span>→</button>
+ <button class="btn primary" onclick="sendMessage()"><span class="send-label">Отправить</span></button>
  </div>`;
  await api('/api/chats/' + id + '/read', { method: 'POST' });
  await fetchMessages(true);
@@ -2207,9 +1833,8 @@ function stopPolling() { if (state.pollTimer) { clearInterval(state.pollTimer); 
 async function loadSquads() {
  $('#squads').innerHTML = '<div class="spin"></div>';
  const p = new URLSearchParams();
- if (state.gameId && !state.squadsAll) p.set('game', state.gameId);
+ if ($('#sgame').value) p.set('game', $('#sgame').value);
  if ($('#sregion').value) p.set('region', $('#sregion').value);
- renderSquadsScope();
  try {
  const data = await api('/api/squads?' + p.toString());
  state.squads = data.items;
@@ -2249,7 +1874,7 @@ async function loadSquads() {
  ${s.is_mine
  ? '<span class="tag you">набор открыт</span>'
  : s.applied
- ? '<button class="btn sm" disabled>Заявка отправлена ✓</button>'
+ ? '<button class="btn sm" disabled>Заявка отправлена</button>'
  : `<button class="btn sm primary" onclick="applySquad(${s.id})">Подать заявку</button>`}
  </div>
  </div>
@@ -2271,9 +1896,9 @@ async function applySquad(id) {
 function openSquadForm() {
  if (!state.token) return requireLogin();
  const gameOpts = state.meta.games.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
- const regionOpts = state.meta.regions.map(r => `<option value="${r.id}">${esc(r.label)}</option>`).join('');
+ const regionOpts = state.meta.regions.map(r => `<option value="${r.id}">${r.flag} ${esc(r.label)}</option>`).join('');
  openModal(`
- <div class="modal-head"><h3>Создать сквад</h3><button class="x-btn" onclick="closeModal()">✕</button></div>
+ <div class="modal-head"><h3>Создать сквад</h3><button class="x-btn" onclick="closeModal()">Закрыть</button></div>
  <div class="modal-body">
  <div class="form-grid">
  <div><label class="lbl">Название</label><input class="inp" id="sqName" placeholder="Например: Night Wolves"></div>
@@ -2329,7 +1954,7 @@ function addGameRow(preset = null) {
  <select class="inp g-sel">${gameOpts}</select>
  <select class="inp g-rank"></select>
  <select class="inp g-role"></select>
- <button class="btn sm ghost" onclick="this.parentElement.remove()">✕ Удалить</button>`;
+ <button class="btn sm ghost" onclick="this.parentElement.remove()">Удалить игру</button>`;
  $('#gameRows').appendChild(row);
  const sync = () => {
  const g = state.meta.games.find(x => x.id === row.querySelector('.g-sel').value);
@@ -2436,26 +2061,16 @@ async function init() {
  try { state.cfg = await api('/api/config'); } catch (e) {}
  try { await loadMeta(); } catch (e) { toast('Не удалось загрузить каталог игр:' + esc(e.message), 'err'); }
  bindFilters();
- const gs = $('#gameSearch');
- if (gs && window.innerWidth < 700) gs.placeholder = 'Найти игру…';
- if (gs) {
- gs.oninput = renderWall;
- gs.onkeydown = e => {
- if (e.key === 'Enter') { const m = matchingGames(); if (m.length) pickGame(m[0].id); }
- if (e.key === 'Escape') { gs.value = ''; renderWall(); }
- };
- }
- renderWallCats();
  bindChips('#pPlatforms', 'plat'); // на случай повторной привязки
  $('#pMic').onclick = () => {
  const el = $('#pMic'); el.dataset.on = el.dataset.on === '1' ? '0' : '1';
  el.classList.toggle('on', el.dataset.on === '1');
  };
+ $('#sgame').onchange = loadSquads;
  $('#sregion').onchange = loadSquads;
  await bootstrapUser();
  loadStats();
- await loadGameWall();
- go(state.token && state.gameId ? 'search' : 'games');
+ loadPlayers();
  loadLooking();
  $('#lfgToggle').onclick = toggleLooking;
  setInterval(() => {

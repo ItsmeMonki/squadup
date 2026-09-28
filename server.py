@@ -195,64 +195,6 @@ GAMES = [
 
 GAME_BY_ID = {g["id"]: g for g in GAMES}
 
-# Официальные обложки игр (Steam CDN). Для игр вне Steam пусто — клиент рисует типографический постер.
-STEAM_APP_IDS = {
-    "cs2": 730,
-    "dota2": 570,
-    "apex": 1172470,
-    "ow2": 2357570,
-    "r6": 359550,
-    "cod": 1938090,
-    "marvel_rivals": 2767030,
-    "pubg": 578080,
-    "rl": 252950,
-    "bf6": 2807960,
-    "deadlock": 1422450,
-    "eafc": 2669320,
-    "hd2": 553850,
-    "arc_raiders": 1808500,
-    "delta": 2507950,
-    "drg": 548430,
-    "pd3": 1272080,
-    "destiny2": 1085660,
-    "warframe": 230410,
-    "division2": 2221490,
-    "lethal": 1966720,
-    "phasmo": 739630,
-    "sot": 1172620,
-    "bg3": 1086940,
-    "mhw": 2246340,
-    "valheim": 892970,
-    "palworld": 1623730,
-    "terraria": 105600,
-    "enshrouded": 1203620,
-    "itt": 1426210,
-    "rust": 252490,
-    "gta": 271590,
-    "ffxiv": 39210,
-    "albion": 761890,
-}
-STEAM_CDN = "https://cdn.cloudflare.steamstatic.com/steam/apps/{}/{}"
-for _g in GAMES:
-    _app = STEAM_APP_IDS.get(_g["id"])
-    if _app:
-        _g["cover"] = STEAM_CDN.format(_app, "library_600x900.jpg")   # вертикальный постер
-        _g["hero"] = STEAM_CDN.format(_app, "header.jpg")             # горизонтальный кадр
-    else:
-        _g["cover"] = ""
-        _g["hero"] = ""
-
-# Свои постеры: файл static/covers/<id>.{jpg,jpeg,png,webp} перекрывает официальный.
-# Положи файлы в design/covers/ и запусти design/apply_design.py — он их скопирует.
-_COVERS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "covers")
-for _g in GAMES:
-    for _ext in ("jpg", "jpeg", "png", "webp"):
-        _f = os.path.join(_COVERS_DIR, f"{_g['id']}.{_ext}")
-        if os.path.exists(_f):
-            _g["cover"] = f"/covers/{_g['id']}.{_ext}"
-            _g["cover_custom"] = True
-            break
-
 # --- Discord OAuth (необязательно: включается переменными окружения) ---
 DISCORD_CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", "").strip()
 DISCORD_CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", "").strip()
@@ -436,7 +378,7 @@ def set_setting(conn, key, value):
 
 
 def vapid_keys(conn):
-    """Возвращает (public, private): переменные окружения → БД → сгенерировать и сохранить."""
+    """Возвращает (public, private): переменные окружения, затем БД, затем сгенерировать и сохранить."""
     global VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY
     if VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY:
         return VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY
@@ -525,7 +467,7 @@ def qint(query, name, default=0, lo=None, hi=None):
 
 
 def chat_partner(conn, c, uid):
-    """Для диалога и зрителя uid → (peer_user_id, peer_nick, я_инициатор, мои_непрочитанные)."""
+    """По uid возвращает (peer_user_id, peer_nick, я_инициатор, мои_непрочитанные)."""
     is_initiator = (c["user_id"] == uid)
     if is_initiator:
         peer_uid = c["peer_user_id"] if "peer_user_id" in c.keys() else None
@@ -1549,40 +1491,6 @@ class Handler(BaseHTTPRequestHandler):
                                    created_at=a["created_at"]) for a in apps],
             ))
 
-        if path == "/api/game-stats" and method == "GET":
-            """Живые цифры под постерами: анкеты, онлайн, сквады и «ищу компанию» по каждой игре."""
-            by_game = {}
-
-            def slot(gid):
-                return by_game.setdefault(gid, dict(players=0, online=0, squads=0, looking=0))
-
-            for r in conn.execute("SELECT games, online FROM listings").fetchall():
-                try:
-                    gs = json.loads(r["games"] or "[]")
-                except Exception:
-                    gs = []
-                for g in gs:
-                    gid = (g or {}).get("game_id")
-                    if not gid:
-                        continue
-                    slot(gid)["players"] += 1
-                    if r["online"]:
-                        slot(gid)["online"] += 1
-            for r in conn.execute("SELECT game_id, COUNT(*) AS c FROM squads GROUP BY game_id").fetchall():
-                slot(r["game_id"])["squads"] = r["c"]
-            cutoff = iso_cutoff(LOOKING_WINDOW_MIN)
-            for r in conn.execute("SELECT games FROM listings WHERE looking_at IS NOT NULL AND looking_at >= ?",
-                                  (cutoff,)).fetchall():
-                try:
-                    gs = json.loads(r["games"] or "[]")
-                except Exception:
-                    gs = []
-                for g in gs:
-                    gid = (g or {}).get("game_id")
-                    if gid:
-                        slot(gid)["looking"] += 1
-            return self._send(200, dict(by_game=by_game, window_minutes=LOOKING_WINDOW_MIN))
-
         if path == "/api/stats" and method == "GET":
             online = conn.execute("SELECT COUNT(*) AS c FROM listings WHERE online = 1").fetchone()["c"]
             total = conn.execute("SELECT COUNT(*) AS c FROM listings").fetchone()["c"]
@@ -1860,7 +1768,7 @@ class Handler(BaseHTTPRequestHandler):
                                     (chat_id, after)).fetchall()
                 items = []
                 for r in rows:
-                    # внутренние роли ('me' = инициатор) → роли относительно зрителя
+                    # внутренние роли ('me' = инициатор) дают роли относительно зрителя
                     sender = r["sender"] if is_initiator else ("peer" if r["sender"] == "me" else "me")
                     items.append(dict(id=r["id"], sender=sender, text=r["text"], created_at=r["created_at"]))
                 return self._send(200, dict(items=items, peer_nick=peer_nick,
