@@ -639,7 +639,7 @@
  <div class="chat-list" id="chatList"></div>
  <div class="chat-win" id="chatWin">
  <div class="empty" style="margin:auto;border:0">
- Выбери диалог слева — или отправь приглашение из поиска, чтобы начать новый.
+ Открой диалог из списка — или позови игрока из поиска кнопкой «Позвать», и переписка появится здесь.
  </div>
  </div>
  </div>
@@ -2297,7 +2297,12 @@ async function loadSquads() {
  const data = await api('/api/squads?' + p.toString());
  state.squads = data.items;
  if (!data.items.length) {
- $('#squads').innerHTML = '<div class="empty" style="grid-column:1/-1">Сквадов по таким фильтрам нет — создай свой!</div>';
+ const filtered = Boolean($('#sgame').value || $('#sregion').value);
+ $('#squads').innerHTML = `<div class="empty" style="grid-column:1/-1">
+ ${filtered
+ ? 'Под такие фильтры составов нет.<br>Попробуй выбрать «Любая игра» — или создай свой сквад.'
+ : 'Пока никто не набирает состав. Создай свой сквад — игроки появятся, как только подтянутся.'}<br><br>
+ <button class="btn primary" onclick="openSquadForm()">Создать сквад</button></div>`;
  return;
  }
  $('#squads').innerHTML = data.items.map(s => `
