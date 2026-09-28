@@ -639,7 +639,8 @@
  <div class="chat-list" id="chatList"></div>
  <div class="chat-win" id="chatWin">
  <div class="empty" style="margin:auto;border:0">
- Открой диалог из списка — или позови игрока из поиска кнопкой «Позвать», и переписка появится здесь.
+ Открой диалог из списка — или позови игрока из поиска кнопкой «Позвать», и переписка появится здесь.<br><br>
+ Пока друзей нет в приложении — <button class="btn sm primary" onclick="openInviteFriends()">Позвать друзей</button>
  </div>
  </div>
  </div>
@@ -682,7 +683,7 @@
  Смена пароля завершает сессии на других устройствах.</p>
  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
  <button class="btn sm" onclick="openPasswordChange()">Сменить пароль</button>
- <button class="btn sm ghost" onclick="shareApp()">Позвать друзей</button>
+ <button class="btn sm ghost" onclick="openInviteFriends()">Позвать друзей</button>
  </div>
  </div>
 
@@ -1356,7 +1357,16 @@ async function wzPublish() {
  state.wizard = null;
  await bootstrapUser();
  loadPlayers(); loadStats(); loadLooking();
+ const invitedBy = (() => { try { return localStorage.getItem('squadup_invited_by') || ''; } catch (e) { return ''; } })();
+ if (invitedBy) {
+ toast('Анкета опубликована — ты в поиске. Тебя позвал <b>' + esc(invitedBy) + '</b>: найди его по нику во вкладке «Поиск».', 'ok');
+ setTimeout(() => {
+ try { localStorage.removeItem('squadup_invited_by'); } catch (e) {}
+ const q = $('#fq'); if (q) { q.value = invitedBy; loadPlayers(); }
+ }, 1200);
+ } else {
  toast('Анкета опубликована — ты в поиске. Позови кого-нибудь или нажми «Я готов играть».', 'ok');
+ }
  go('search');
  } catch (e) {
  err(e.message);
@@ -1861,18 +1871,97 @@ function currentFilters() {
  p.set('exclude_me', '1');
  return p;
 }
-async function shareApp() {
- const url = location.origin;
- const text = 'Ищу тиммейтов в SQUADUP — заполняй анкету и добавляйся';
+/* ---------- «Позвать друзей» ---------- */
+function inviteLink() {
+ // в ссылке едет ник приглашающего: друг попадёт на главную с подсказкой, кого искать
+ const me = (state.me && state.me.nickname) ? state.me.nickname : '';
+ return location.origin + '/' + (me ? '?from=' + encodeURIComponent(me) : '');
+}
+function inviteMessage() {
+ const me = (state.me && state.me.nickname) ? state.me.nickname : '';
+ return (me ? 'Я в SQUADUP —' : 'Я в SQUADUP!') +
+ ' тут ищут тиммейтов в кооперативные и соревновательные игры. '
+ + 'Заходи, заполнишь анкету за минуту, а потом найдёшь меня по нику'
+ + (me ? ' ' + me : '') + ': ' + inviteLink();
+}
+/* копирование с запасными путями: на телефонах буфер иногда закрыт */
+async function copyText(text, okMsg) {
  try {
- if (navigator.share) { await navigator.share({ title: 'SQUADUP', text: text, url: url }); return; }
- await navigator.clipboard.writeText(url);
- toast('Ссылка скопирована — отправь её друзьям', 'ok');
+ if (navigator.clipboard && window.isSecureContext) {
+ await navigator.clipboard.writeText(text);
+ toast(okMsg, 'ok');
+ return true;
+ }
+ throw new Error('clipboard недоступен');
  } catch (e) {
- if (e && e.name === 'AbortError') return;  // человек закрыл окно «поделиться»
- prompt('Скопируй ссылку:', url);
+ const ta = document.createElement('textarea');
+ ta.value = text;
+ ta.setAttribute('readonly', '');
+ ta.style.position = 'fixed';
+ ta.style.top = '-1000px';
+ document.body.appendChild(ta);
+ ta.select();
+ ta.setSelectionRange(0, text.length);
+ let ok = false;
+ try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+ ta.remove();
+ if (ok) { toast(okMsg, 'ok'); return true; }
+ const field = $('#inviteLink');
+ if (field) { field.removeAttribute('readonly'); field.focus(); field.select(); }
+ toast('Скопируй ссылку вручную — она уже выделена', 'err');
+ return false;
  }
 }
+function copyInviteLink() { return copyText(inviteLink(), 'Ссылка скопирована — отправь её друзьям'); }
+function copyInviteMessage() { return copyText(inviteMessage(), 'Сообщение скопировано — вставь его в чат'); }
+
+function openInviteFriends() {
+ const link = inviteLink();
+ const message = inviteMessage();
+ const u = encodeURIComponent(link), t = encodeURIComponent(message);
+ const canShare = typeof navigator.share === 'function';
+ openModal(`
+ <div class="modal-head"><h3>Позвать друзей</h3>
+ <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+ <div class="modal-body">
+ <p class="hint" style="margin-top:0">Отправь ссылку — друг откроет её на телефоне или компьютере
+ и заполнит анкету за минуту. Как только он это сделает, он появится в поиске.</p>
+
+ <label class="lbl">Ссылка на приложение</label>
+ <div style="display:flex;gap:8px;align-items:stretch">
+ <input class="inp" id="inviteLink" readonly value="${esc(link)}" style="flex:1;min-width:0">
+ <button class="btn primary" onclick="copyInviteLink()">Копировать</button>
+ </div>
+
+ <label class="lbl" style="margin-top:16px">Отправить в мессенджере</label>
+ <div style="display:flex;gap:8px;flex-wrap:wrap">
+ <a class="btn" style="background:rgba(34,158,217,.16);border-color:rgba(34,158,217,.55);color:#9adcf7"
+ href="https://t.me/share/url?url=${u}&text=${t}" target="_blank" rel="noopener noreferrer">Telegram</a>
+ <a class="btn" style="background:rgba(37,211,102,.14);border-color:rgba(37,211,102,.5);color:#a8ecc4"
+ href="https://wa.me/?text=${t}%20${u}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+ <a class="btn" style="background:rgba(0,119,255,.16);border-color:rgba(0,119,255,.5);color:#a9c8ff"
+ href="https://vk.com/share.php?url=${u}&title=${t}" target="_blank" rel="noopener noreferrer">ВКонтакте</a>
+ <a class="btn" style="background:rgba(255,255,255,.06)" href="mailto:?subject=${encodeURIComponent('SQUADUP — поиск тиммейтов')}&body=${t}">Почта</a>
+ </div>
+
+ ${canShare ? `<button class="btn ghost" style="width:100%;margin-top:12px" onclick="systemShare()">Поделиться через устройство</button>` : ''}
+
+ <label class="lbl" style="margin-top:16px">Готовое сообщение</label>
+ <textarea class="inp" id="inviteText" rows="3" readonly style="resize:vertical;line-height:1.5">${esc(message)}</textarea>
+ <button class="btn ghost" style="width:100%;margin-top:10px" onclick="copyInviteMessage()">Скопировать текст сообщения</button>
+ </div>
+ `);
+}
+async function systemShare() {
+ try {
+ await navigator.share({ title: 'SQUADUP', text: inviteMessage(), url: inviteLink() });
+ } catch (e) {
+ if (e && e.name === 'AbortError') return;   // окно «поделиться» закрыли вручную
+ toast('Устройство не смогло поделиться — скопируй ссылку кнопкой выше', 'err');
+ }
+}
+/* старые обработчики остались на shareApp — оставляем имя рабочим */
+function shareApp() { openInviteFriends(); }
 
 function resetFilters() {
  ['#fq', '#fgame', '#fplatform', '#fregion', '#flang', '#fskill', '#fvibe'].forEach(s => $(s).value = '');
@@ -1919,7 +2008,7 @@ function renderCards(data) {
  const cards = items.map(p => cardHtml(p)).join('');   // своя анкета остаётся на месте
  $('#cards').innerHTML = cards + `<article class="card" style="display:flex;align-items:center;justify-content:center;text-align:center">
  <div><div style="font-size:15px;line-height:1.5">${msg}</div>
- <button class="btn primary" style="margin-top:14px" onclick="shareApp()">Позвать друзей</button></div></article>`;
+ <button class="btn primary" style="margin-top:14px" onclick="openInviteFriends()">Позвать друзей</button></div></article>`;
  return;
  }
  $('#cards').innerHTML = items.map(cardHtml).join('');
@@ -2574,6 +2663,12 @@ async function init() {
  already_linked: 'Этот Discord уже привязан к другой анкете',
  };
  toast(esc(DISCORD_ERRORS[discordErr] || 'Не удалось войти через Discord'), 'err');
+ }
+ // приглашение: запоминаем, кто позвал, и подсказываем новичку, что делать
+ const fromNick = (url.searchParams.get('from') || '').trim().slice(0, 32);
+ if (fromNick) {
+ history.replaceState(null, '', '/');
+ try { localStorage.setItem('squadup_invited_by', fromNick); } catch (e) {}
  }
  if (startView && ['search', 'squads', 'chats', 'profile'].includes(startView)) go(startView);
 
