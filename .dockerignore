@@ -1,0 +1,15 @@
+# Данные и мусор — не тащим в образ и не коммитим
+data.db
+*.db
+*.sqlite3
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.venv/
+venv/
+README.md
+DEPLOY.md
+render.yaml
+railway.toml
+docker-compose.yml

@@ -1,0 +1,14 @@
+# база данных — данные окружения, не код
+data.db
+*.db
+*.sqlite3
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# система
+.DS_Store
+Thumbs.db

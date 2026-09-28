@@ -1,0 +1,23 @@
+# Локальный запуск в контейнере:
+#   docker compose up --build
+# Приложение: http://localhost:8000
+services:
+  squadup:
+    build: .
+    image: squadup:latest
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      DB_PATH: /data/squadup.db
+      # Вход через Discord (необязательно): впиши свои значения или задай в .env
+      DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:-}"
+      DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:-}"
+      # DISCORD_REDIRECT_URI: "https://твой-домен/api/auth/discord/callback"
+    volumes:
+      # база переживает перезапуск контейнера
+      - squadup-data:/data
+    restart: unless-stopped
+
+volumes:
+  squadup-data:

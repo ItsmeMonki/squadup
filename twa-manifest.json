@@ -1,0 +1,39 @@
+{
+  "packageId": "app.squadup.twa",
+  "host": "ТВОЙ-ДОМЕН.example.com",
+  "name": "SQUADUP — поиск тиммейтов",
+  "launcherName": "SQUADUP",
+  "display": "standalone",
+  "themeColor": "#07080f",
+  "themeColorDark": "#07080f",
+  "navigationColor": "#07080f",
+  "navigationColorDark": "#07080f",
+  "backgroundColor": "#07080f",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-512.png",
+  "maskableIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-maskable-512.png",
+  "appVersionName": "1.2.0",
+  "appVersionCode": 3,
+  "shortcuts": [
+    { "name": "Ищу сейчас", "shortName": "Ищу сейчас", "url": "/?view=search", "chosenIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-192.png" },
+    { "name": "Сквады", "shortName": "Сквады", "url": "/?view=squads", "chosenIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-192.png" },
+    { "name": "Мои чаты", "shortName": "Чаты", "url": "/?view=chats", "chosenIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-192.png" }
+  ],
+  "signingKey": { "path": "./android.keystore", "alias": "squadup" },
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://ТВОЙ-ДОМЕН.example.com/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {
+    "playBilling": { "enabled": false },
+    "locationDelegation": { "enabled": false }
+  },
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://ТВОЙ-ДОМЕН.example.com/",
+  "minSdkVersion": 21,
+  "splashScreenFadeOutDuration": 300,
+  "orientation": "any",
+  "enableSiteSettingsShortcut": true,
+  "appVersion": "1.2.0"
+}

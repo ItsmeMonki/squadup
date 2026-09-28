@@ -1,0 +1,35 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Как пользоваться: положить репозиторий на GitHub → в Render нажать
+# «New +» → «Blueprint» → выбрать репозиторий → Apply. Всё остальное Render сделает сам.
+
+services:
+  - type: web
+    name: squadup
+    runtime: docker
+    plan: free               # бесплатный тариф: сервис засыпает после 15 мин простоя,
+                             # первый заход после сна занимает ~30–50 секунд
+    region: frankfurt        # ближайший к Германии/СНГ регион
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # PORT задавать НЕ нужно: Render подставляет свой и сам же проксирует на него.
+      # База по умолчанию лежит рядом с приложением (файл data.db внутри контейнера).
+      # Это нормально для демо: анкеты, чаты и модерация работают, но при новом
+      # деплое база создаётся заново из демо-данных.
+      #
+      # --- Как сделать данные постоянными (тариф Starter и выше) ---
+      # 1) добавь в этот файл блок:
+      #      disk:
+      #        name: squadup-data
+      #        mountPath: /data
+      #        sizeGB: 1
+      # 2) в envVars добавь:
+      #      - key: DB_PATH
+      #        value: /data/squadup.db
+      #
+      # --- Модерация (жалобы) ---
+      # Задай ADMIN_KEY в панели Render: Environment → Add Environment Variable.
+      # Без него приложение работает, но эндпоинты модератора отвечают 403.
+      - key: ADMIN_KEY
+        generateValue: true  # Render сам сгенерирует случайный ключ и покажет его в панели

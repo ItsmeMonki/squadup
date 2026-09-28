@@ -1,0 +1,152 @@
+{
+  "name": "SQUADUP — поиск тиммейтов",
+  "short_name": "SQUADUP",
+  "description": "Находи тиммейтов в кооперативных и соревновательных играх: фильтры по игре, режиму, платформе, региону и рангу, живые анкеты, сквады и чат.",
+  "lang": "ru",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#07080f",
+  "theme_color": "#07080f",
+  "categories": [
+    "games",
+    "social"
+  ],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/phone-1-search.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Поиск тиммейтов: фильтры по игре, режиму и платформе"
+    },
+    {
+      "src": "/screenshots/phone-2-lfg-cards.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Лента «Ищу сейчас» и анкеты игроков"
+    },
+    {
+      "src": "/screenshots/phone-3-profile.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Профиль игрока: игры, ранги, роли, рейтинг и отзывы"
+    },
+    {
+      "src": "/screenshots/phone-4-squads.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Сквады, которые набирают игроков"
+    },
+    {
+      "src": "/screenshots/phone-5-chat.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Встроенный чат с тиммейтами"
+    },
+    {
+      "src": "/screenshots/phone-6-notifications.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Уведомления работают при закрытом приложении"
+    },
+    {
+      "src": "/screenshots/tablet-1-search.png",
+      "sizes": "1200x1920",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Планшетный вид"
+    },
+    {
+      "src": "/screenshots/desktop-search.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Приложение на компьютере"
+    },
+    {
+      "src": "/screenshots/desktop-squads.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Сквады на большом экране"
+    },
+    {
+      "src": "/screenshots/desktop-chats.png",
+      "sizes": "1280x860",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Живой чат с реальным игроком"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ищу сейчас",
+      "short_name": "Ищу сейчас",
+      "description": "Включить статус «готов играть» и увидеть, кто ищет компанию",
+      "url": "/?view=search",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Сквады",
+      "short_name": "Сквады",
+      "description": "Составы, которые набирают игроков",
+      "url": "/?view=squads",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Мои чаты",
+      "short_name": "Чаты",
+      "description": "Диалоги с игроками",
+      "url": "/?view=chats",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

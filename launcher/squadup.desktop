@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=SQUADUP
+GenericName=Поиск тиммейтов
+Comment=Поиск тиммейтов в кооперативных и соревновательных играх
+# Путь замени на свой, например /home/имя/squadup/launcher/start.sh
+Exec=/home/user/squadup/launcher/start.sh
+Icon=/home/user/squadup/static/icons/icon-512.png
+Terminal=false
+Categories=Game;Network;
+Keywords=games;team;coop;lfg;тиммейты;
+StartupNotify=true

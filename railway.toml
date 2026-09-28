@@ -1,0 +1,15 @@
+# Railway: конфиг читается автоматически, если файл лежит в корне репозитория.
+# После первого деплоя не забудь:
+#   1) Variables → DB_PATH = /data/squadup.db
+#   2) Volumes → добавить том с точкой монтирования /data
+#   3) Settings → Networking → Generate Domain (публичная ссылка)
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python3 server.py"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

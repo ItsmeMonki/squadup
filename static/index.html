@@ -1,0 +1,2110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SQUADUP — поиск тиммейтов</title>
+<meta name="description" content="Находи тиммейтов в кооперативных и соревновательных играх: фильтры по игре, режиму, платформе, региону и рангу.">
+<meta name="theme-color" content="#07080f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SQUADUP">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/icons/favicon-64.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<style>
+  :root{
+    --bg:#07080f;
+    --panel:rgba(255,255,255,.045);
+    --panel-2:rgba(255,255,255,.07);
+    --border:rgba(255,255,255,.09);
+    --border-strong:rgba(255,255,255,.16);
+    --text:#e9eaf5;
+    --muted:#9aa1bb;
+    --muted-2:#6d7492;
+    --acc:#8b5cff;
+    --acc-2:#22d3ee;
+    --acc-3:#ff5c8a;
+    --green:#37e39b;
+    --amber:#ffc75a;
+    --radius:18px;
+    --shadow:0 18px 50px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .bg-fx{
+    position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(900px 520px at 12% -8%, rgba(139,92,255,.30), transparent 60%),
+      radial-gradient(760px 480px at 88% 4%, rgba(34,211,238,.20), transparent 60%),
+      radial-gradient(800px 600px at 55% 108%, rgba(255,92,138,.16), transparent 60%),
+      linear-gradient(180deg,#07080f,#05060c 60%,#04050a);
+  }
+  .bg-fx::after{
+    content:"";position:absolute;inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+    background-size:56px 56px;
+    mask-image:radial-gradient(1000px 700px at 50% 0%,#000 20%,transparent 78%);
+    -webkit-mask-image:radial-gradient(1000px 700px at 50% 0%,#000 20%,transparent 78%);
+  }
+  a{color:var(--acc-2);text-decoration:none}
+  button{font:inherit;color:inherit;cursor:pointer}
+  input,select,textarea{font:inherit;color:var(--text)}
+  ::placeholder{color:var(--muted-2)}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:99px;border:3px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.22);background-clip:content-box}
+
+  /* ---------- шапка ---------- */
+  header{
+    position:sticky;top:0;z-index:60;
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    background:linear-gradient(180deg,rgba(7,8,15,.92),rgba(7,8,15,.68));
+    border-bottom:1px solid var(--border);
+  }
+  .head-in{max-width:1320px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .logo{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none}
+  .logo-mark{
+    width:40px;height:40px;border-radius:13px;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--acc),var(--acc-2));
+    box-shadow:0 10px 26px rgba(139,92,255,.42);
+    font-weight:900;font-size:19px;color:#0a0714;letter-spacing:-.5px;
+  }
+  .logo-txt{line-height:1.05}
+  .logo-txt b{font-size:17.5px;letter-spacing:3px;display:block}
+  .logo-txt span{font-size:11px;color:var(--muted);letter-spacing:.9px;text-transform:uppercase}
+  nav{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+  .nav-btn{
+    background:transparent;border:1px solid transparent;border-radius:12px;
+    padding:9px 14px;color:var(--muted);display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;
+    transition:.16s;
+  }
+  .nav-btn:hover{color:var(--text);background:var(--panel)}
+  .nav-btn.active{color:var(--text);background:var(--panel-2);border-color:var(--border-strong)}
+  .nav-btn .dot{
+    background:linear-gradient(135deg,var(--acc),var(--acc-3));color:#fff;font-size:11px;font-weight:800;
+    border-radius:99px;padding:1px 7px;min-width:20px;text-align:center
+  }
+  .user-chip{
+    display:flex;align-items:center;gap:10px;padding:6px 12px 6px 6px;border-radius:99px;
+    border:1px solid var(--border);background:var(--panel);cursor:pointer;position:relative
+  }
+  .user-chip:hover{border-color:var(--border-strong)}
+  .avatar{
+    border-radius:50%;display:grid;place-items:center;font-weight:800;color:#0b0716;flex:none;
+    text-transform:uppercase;letter-spacing:.5px
+  }
+  .a-40{width:40px;height:40px;font-size:14px}
+  .a-52{width:52px;height:52px;font-size:17px}
+  .a-72{width:72px;height:72px;font-size:23px}
+  .a-96{width:96px;height:96px;font-size:30px}
+  .user-chip .who{line-height:1.2}
+  .user-chip .who b{display:block;font-size:13.5px}
+  .user-chip .who span{font-size:11px;color:var(--muted)}
+  .dropdown{
+    position:absolute;right:0;top:calc(100% + 10px);min-width:230px;padding:8px;
+    background:#11122300;background:rgba(15,16,28,.97);border:1px solid var(--border-strong);
+    border-radius:14px;box-shadow:var(--shadow);display:none
+  }
+  .dropdown.open{display:block}
+  .dropdown button{
+    width:100%;text-align:left;background:transparent;border:0;padding:10px 12px;border-radius:10px;
+    color:var(--text);font-size:14px;display:block
+  }
+  .dropdown button:hover{background:var(--panel-2)}
+  .dropdown .sep{height:1px;background:var(--border);margin:6px 4px}
+
+  /* ---------- общий каркас ---------- */
+  main{max-width:1320px;margin:0 auto;padding:24px 20px 90px}
+  .view{display:none}
+  .view.active{display:block;animation:fade .28s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  h1,h2,h3{margin:0}
+  .page-title{font-size:24px;letter-spacing:-.3px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .page-sub{color:var(--muted);margin-top:6px;font-size:14px;max-width:760px}
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+
+  /* ---------- герой / статистика ---------- */
+  .hero{
+    border:1px solid var(--border);border-radius:24px;padding:22px 24px;margin-bottom:20px;
+    background:linear-gradient(120deg,rgba(139,92,255,.16),rgba(34,211,238,.08) 45%,rgba(255,92,138,.10));
+    display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap
+  }
+  .hero h1{font-size:clamp(22px,3.4vw,34px);letter-spacing:-.6px;line-height:1.15;max-width:640px}
+  .hero h1 em{font-style:normal;background:linear-gradient(120deg,var(--acc-2),var(--acc));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{color:#c3c8dd;margin:10px 0 0;font-size:14.5px;max-width:620px}
+  .stats{display:flex;gap:12px;flex-wrap:wrap}
+  .stat{
+    background:rgba(9,10,20,.55);border:1px solid var(--border);border-radius:16px;padding:12px 16px;min-width:118px
+  }
+  .stat b{display:block;font-size:22px;letter-spacing:-.5px}
+  .stat span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+
+  /* ---------- фильтры ---------- */
+  .filters{
+    border:1px solid var(--border);border-radius:20px;padding:16px;background:var(--panel);
+    display:flex;flex-direction:column;gap:14px;margin-bottom:20px
+  }
+  .filters-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .field{
+    display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.32);border:1px solid var(--border);
+    border-radius:12px;padding:0 10px;height:42px;min-width:0;flex:1 1 196px;max-width:320px
+  }
+  .field.grow{flex:1 1 260px;max-width:none}
+  .field svg{flex:none;opacity:.6}
+  .field input,.field select{
+    background:transparent;border:0;outline:0;width:100%;height:100%;
+    min-width:0;text-overflow:ellipsis;font-size:13.8px
+  }
+  .field input{font-size:15px}
+  .field select{cursor:pointer}
+  .field select option{background:#12132a;color:#fff}
+  .chip{
+    border:1px solid var(--border);background:rgba(0,0,0,.26);color:var(--muted);border-radius:99px;
+    padding:9px 14px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:7px;transition:.15s
+  }
+  .chip:hover{color:var(--text);border-color:var(--border-strong)}
+  .chip.on{
+    color:#fff;border-color:transparent;
+    background:linear-gradient(135deg,rgba(139,92,255,.85),rgba(34,211,238,.7));
+    box-shadow:0 8px 20px rgba(139,92,255,.28)
+  }
+  .seg{display:flex;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px;padding:3px;gap:3px}
+  .seg button{background:transparent;border:0;border-radius:9px;padding:8px 14px;color:var(--muted);font-weight:600;font-size:13.5px}
+  .seg button.on{background:var(--panel-2);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+  .results-info{color:var(--muted);font-size:13.5px;margin:2px 2px 14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+  .reset{background:transparent;border:1px dashed var(--border-strong);color:var(--muted);border-radius:12px;padding:9px 14px;font-size:13.5px}
+  .reset:hover{color:var(--text);border-color:var(--acc-2)}
+
+  /* ---------- карточки игроков ---------- */
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+  .card{
+    border:1px solid var(--border);border-radius:var(--radius);padding:18px;background:var(--panel);
+    display:flex;flex-direction:column;gap:13px;transition:.18s;position:relative;overflow:hidden
+  }
+  .card::before{
+    content:"";position:absolute;inset:0;opacity:0;transition:.2s;
+    background:radial-gradient(420px 180px at 100% 0%,rgba(139,92,255,.18),transparent 70%)
+  }
+  .card:hover{transform:translateY(-4px);border-color:var(--border-strong);box-shadow:var(--shadow)}
+  .card:hover::before{opacity:1}
+  .card.mine{border-color:rgba(34,211,238,.45);background:linear-gradient(180deg,rgba(34,211,238,.09),var(--panel))}
+  .card-top{display:flex;gap:14px;position:relative}
+  .av-wrap{position:relative;flex:none}
+  .online-dot{
+    position:absolute;right:-1px;bottom:-1px;width:15px;height:15px;border-radius:50%;
+    background:var(--green);border:3px solid #0b0c16;box-shadow:0 0 12px rgba(55,227,155,.8)
+  }
+  .online-dot.off{background:#5b6178;box-shadow:none}
+  .card-id{min-width:0;flex:1}
+  .nick{font-size:17px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .nick .age{font-weight:600;color:var(--muted);font-size:13px}
+  .verif{color:var(--acc-2);font-size:13px;display:inline-flex}
+  .meta{color:var(--muted);font-size:12.8px;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+  .topic{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .tag{
+    border:1px solid var(--border);background:rgba(0,0,0,.3);border-radius:8px;padding:3px 9px;
+    font-size:12px;color:#cdd2e6;font-weight:600;white-space:nowrap
+  }
+  .tag.coop{border-color:rgba(55,227,155,.4);color:#8bf0c4;background:rgba(55,227,155,.1)}
+  .tag.comp{border-color:rgba(255,92,138,.4);color:#ffb3c9;background:rgba(255,92,138,.1)}
+  .tag.pvp{border-color:rgba(255,199,90,.4);color:#ffdca0;background:rgba(255,199,90,.1)}
+  .tag.you{border-color:rgba(34,211,238,.5);color:#9beaf7;background:rgba(34,211,238,.12)}
+  .gl{display:flex;flex-direction:column;gap:8px;position:relative}
+  .gl-row{
+    display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.26);border:1px solid var(--border);
+    border-radius:12px;padding:9px 11px
+  }
+  .gl-row .em{font-size:18px}
+  .gl-row .gi{min-width:0;flex:1;line-height:1.25}
+  .gl-row .gi b{font-size:13.6px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gl-row .gi span{font-size:11.6px;color:var(--muted)}
+  .about{
+    color:#c2c7dc;font-size:13.4px;position:relative;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden
+  }
+  .card-foot{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:auto;padding-top:4px;
+    border-top:1px solid var(--border);position:relative
+  }
+  .rate{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);padding-top:10px}
+  .rate b{color:var(--text);font-size:14.5px}
+  .actions{display:flex;gap:8px;padding-top:10px}
+  .btn{
+    border:1px solid var(--border-strong);background:var(--panel-2);border-radius:12px;padding:10px 15px;
+    font-weight:700;font-size:13.6px;transition:.15s;white-space:nowrap
+  }
+  .btn:hover{background:rgba(255,255,255,.12)}
+  .btn.primary{
+    border-color:transparent;background:linear-gradient(135deg,var(--acc),#6c4bff 55%,var(--acc-2));color:#fff;
+    box-shadow:0 10px 24px rgba(139,92,255,.32)
+  }
+  .btn.primary:hover{filter:brightness(1.1)}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:7px 12px;font-size:13px}
+  .btn:disabled{opacity:.5;cursor:default;filter:none}
+  .empty{
+    border:1px dashed var(--border-strong);border-radius:20px;padding:46px 24px;text-align:center;color:var(--muted)
+  }
+  .empty .big{font-size:40px;margin-bottom:10px}
+
+  /* ---------- сквады ---------- */
+  .squad{
+    border:1px solid var(--border);border-radius:var(--radius);padding:18px;background:var(--panel);
+    display:flex;flex-direction:column;gap:13px;transition:.18s
+  }
+  .squad:hover{transform:translateY(-4px);border-color:var(--border-strong);box-shadow:var(--shadow)}
+  .squad-top{display:flex;gap:13px;align-items:center}
+  .emblem{
+    width:54px;height:54px;border-radius:15px;display:grid;place-items:center;font-size:24px;flex:none;
+    background:linear-gradient(140deg,rgba(139,92,255,.35),rgba(34,211,238,.22));border:1px solid var(--border-strong)
+  }
+  .squad h3{font-size:17px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .tag-chip{
+    font-size:11px;font-weight:800;letter-spacing:1px;border:1px solid var(--border-strong);
+    border-radius:7px;padding:2px 7px;color:var(--acc-2)
+  }
+  .slots{display:flex;gap:5px;align-items:center}
+  .slot{width:12px;height:12px;border-radius:4px;background:rgba(139,92,255,.75)}
+  .slot.free{background:rgba(255,255,255,.14);border:1px dashed var(--border-strong)}
+  .need-list{display:flex;gap:6px;flex-wrap:wrap}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13.3px;color:#c6cbe0}
+  .kv dt{color:var(--muted)}
+  .kv dd{margin:0}
+
+  /* ---------- чаты ---------- */
+  .chat-shell{display:grid;grid-template-columns:330px 1fr;gap:16px;height:calc(100vh - 250px);min-height:460px}
+  .chat-list,.chat-win{
+    border:1px solid var(--border);border-radius:var(--radius);background:var(--panel);overflow:hidden;
+    display:flex;flex-direction:column
+  }
+  .chat-item{
+    display:flex;gap:12px;padding:13px 14px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center
+  }
+  .chat-item:hover{background:var(--panel-2)}
+  .chat-item.active{background:linear-gradient(90deg,rgba(139,92,255,.22),transparent)}
+  .chat-item .ci{min-width:0;flex:1}
+  .chat-item .ci b{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+  .chat-item .ci b span{color:var(--muted-2);font-size:11.5px;font-weight:600;flex:none}
+  .chat-item .ci p{margin:2px 0 0;color:var(--muted);font-size:12.6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .unread{
+    background:linear-gradient(135deg,var(--acc-3),var(--acc));color:#fff;font-size:11px;font-weight:800;
+    border-radius:99px;min-width:20px;padding:1px 6px;text-align:center
+  }
+  .chat-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center}
+  .msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:10px}
+  .bubble{
+    max-width:74%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.45;position:relative;
+    animation:pop .2s ease
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .bubble.me{align-self:flex-end;background:linear-gradient(135deg,var(--acc),#5f43e0);border-bottom-right-radius:5px}
+  .bubble.peer{align-self:flex-start;background:var(--panel-2);border:1px solid var(--border);border-bottom-left-radius:5px}
+  .bubble time{display:block;font-size:10.5px;opacity:.6;margin-top:4px}
+  .typing{align-self:flex-start;display:flex;gap:4px;padding:12px 16px;background:var(--panel-2);border:1px solid var(--border);border-radius:16px}
+  .typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);display:block;animation:blink 1.2s infinite}
+  .typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+  .composer{display:flex;gap:10px;padding:14px;border-top:1px solid var(--border)}
+  .composer input{
+    flex:1;background:rgba(0,0,0,.32);border:1px solid var(--border);border-radius:12px;padding:12px 14px;outline:0
+  }
+  .composer input:focus{border-color:var(--acc)}
+
+  /* ---------- формы ---------- */
+  .panel-box{border:1px solid var(--border);border-radius:20px;background:var(--panel);padding:20px;margin-bottom:18px}
+  .form-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  label.lbl{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px}
+  .inp{
+    width:100%;background:rgba(0,0,0,.32);border:1px solid var(--border);border-radius:12px;padding:11px 13px;outline:0
+  }
+  .inp:focus{border-color:var(--acc)}
+  textarea.inp{min-height:105px;resize:vertical}
+  select.inp{cursor:pointer}select.inp option{background:#12132a}
+  .chips-wrap{display:flex;gap:8px;flex-wrap:wrap}
+  .game-row{
+    display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:10px;align-items:center;
+    background:rgba(0,0,0,.24);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px
+  }
+  .hint{color:var(--muted-2);font-size:12.5px}
+
+  /* ---------- модальные окна ---------- */
+  .modal-bg{
+    position:fixed;inset:0;background:rgba(4,5,10,.72);backdrop-filter:blur(6px);z-index:200;
+    display:none;align-items:flex-start;justify-content:center;padding:40px 18px;overflow-y:auto
+  }
+  .modal-bg.open{display:flex}
+  .modal{
+    width:min(720px,100%);background:linear-gradient(180deg,#12132a,#0d0e1d);border:1px solid var(--border-strong);
+    border-radius:22px;box-shadow:var(--shadow);animation:up .25s ease;overflow:hidden
+  }
+  @keyframes up{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+  .modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:14px;align-items:center}
+  .modal-body{padding:22px}
+  .modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+  .x-btn{background:transparent;border:1px solid var(--border);border-radius:10px;width:34px;height:34px;display:grid;place-items:center;color:var(--muted)}
+  .x-btn:hover{color:#fff;border-color:var(--border-strong)}
+  .prof-hero{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .prof-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:18px 0}
+  .mini{border:1px solid var(--border);border-radius:14px;padding:12px;background:rgba(0,0,0,.24)}
+  .mini b{display:block;font-size:19px}
+  .mini span{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.6px}
+  .review{border-left:2px solid var(--acc);padding:6px 0 6px 13px;margin-bottom:12px}
+  .review b{font-size:13.5px}.review span{color:var(--muted-2);font-size:11.5px;margin-left:8px}
+  .review p{margin:4px 0 0;color:#c2c7dc;font-size:13.3px}
+
+  /* ---------- «Ищу сейчас» ---------- */
+  .lfg{
+    border:1px solid rgba(55,227,155,.28);border-radius:20px;padding:16px;margin-bottom:20px;
+    background:linear-gradient(120deg,rgba(55,227,155,.11),rgba(34,211,238,.07) 55%,rgba(139,92,255,.08))
+  }
+  .lfg-head{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .lfg-head b{font-size:15.5px;display:flex;align-items:center;gap:9px}
+  .lfg-pulse{width:10px;height:10px;border-radius:50%;background:var(--green);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(55,227,155,.65)}70%{box-shadow:0 0 0 11px rgba(55,227,155,0)}100%{box-shadow:0 0 0 0 rgba(55,227,155,0)}}
+  .lfg-row{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 6px}
+  .lfg-card{
+    min-width:272px;max-width:296px;border:1px solid var(--border);background:rgba(9,10,20,.62);
+    border-radius:16px;padding:13px;display:flex;flex-direction:column;gap:11px;flex:none
+  }
+  .lfg-card .top{display:flex;gap:10px;align-items:center}
+  .lfg-empty{
+    border:1px dashed var(--border-strong);border-radius:16px;padding:18px;color:var(--muted);
+    font-size:13.5px;text-align:center;flex:1
+  }
+  #lfgToggle.on{background:linear-gradient(135deg,rgba(55,227,155,.9),rgba(34,211,238,.75));box-shadow:0 10px 24px rgba(55,227,155,.25)}
+
+  /* ---------- отзывы ---------- */
+  .stars{display:flex;gap:5px}
+  .stars button{background:transparent;border:0;font-size:26px;line-height:1;color:#3a3f57;padding:0;transition:.12s}
+  .stars button:hover{transform:scale(1.12)}
+  .stars button.on{color:var(--amber);text-shadow:0 0 14px rgba(255,199,90,.5)}
+  .copy-tag{
+    display:inline-flex;align-items:center;gap:9px;border:1px dashed var(--border-strong);border-radius:11px;
+    padding:8px 12px;font-size:13.2px;background:rgba(0,0,0,.26);color:#d5d9ea;margin-top:10px
+  }
+  .copy-tag button{background:transparent;border:0;color:var(--acc-2);font-weight:700;font-size:12.5px}
+
+  /* ---------- тосты ---------- */
+  #toasts{position:fixed;right:18px;bottom:18px;z-index:300;display:flex;flex-direction:column;gap:10px;max-width:360px}
+  .toast{
+    background:rgba(17,18,34,.97);border:1px solid var(--border-strong);border-left:3px solid var(--acc-2);
+    border-radius:14px;padding:13px 16px;box-shadow:var(--shadow);animation:up .22s ease;font-size:13.8px
+  }
+  .toast.ok{border-left-color:var(--green)}
+  .toast.err{border-left-color:var(--acc-3)}
+  .toast .t-actions{margin-top:9px;display:flex;gap:8px}
+  .toast button{background:var(--panel-2);border:1px solid var(--border-strong);border-radius:9px;padding:6px 11px;font-size:12.5px}
+  .spin{width:26px;height:26px;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:var(--acc-2);animation:sp .8s linear infinite;margin:40px auto}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  @media (max-width:980px){
+    /* --- шапка: компактнее и без переноса на вторую строку --- */
+    .head-in{gap:10px;padding:10px 14px}
+    nav{order:3;width:100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+    nav::-webkit-scrollbar{display:none}
+    .nav-btn{white-space:nowrap;padding:8px 12px;font-size:13.5px}
+    .logo-txt span{display:none}
+    .logo-mark{width:34px;height:34px;border-radius:11px;font-size:16px}
+    .logo-txt b{font-size:15px;letter-spacing:2px}
+    .user-chip{padding:5px 11px 5px 5px}
+    .user-chip .a-40{width:32px;height:32px;font-size:12px}
+    .user-chip .who span{display:none}
+
+    /* --- контент во всю ширину, без горизонтального скролла --- */
+    main{padding:16px 14px 90px}
+    .hero{padding:16px;border-radius:20px;gap:16px}
+    .hero h1{font-size:21px;letter-spacing:-.3px}
+    .hero p{font-size:13.6px}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+    .stat{padding:10px 12px;min-width:0}
+    .stat b{font-size:19px}
+    .stat span{font-size:10.5px}
+    .grid{grid-template-columns:1fr;gap:13px}
+    .card{padding:15px}
+    .filters{padding:12px;border-radius:16px;gap:11px}
+    .field{flex:1 1 44%;max-width:none;min-width:0;height:44px}
+    .field.grow{flex:1 1 100%}
+    .seg{flex:1 1 100%}
+    .seg button{flex:1;padding:9px 6px;font-size:13px}
+
+    /* --- форма игр: название игры на всю ширину, ранг/роль в две колонки --- */
+    .game-row{grid-template-columns:1fr 1fr;gap:8px;position:relative;padding:12px}
+    .game-row .g-sel{grid-column:1 / -1}
+    .game-row .btn.ghost{grid-column:1 / -1;width:100%;text-align:center;padding:9px}
+    .game-row .inp{padding:10px 11px}
+
+    /* --- модальные окна почти на весь экран --- */
+    .modal-bg{padding:14px}
+    .modal{border-radius:18px}
+    .modal-body{padding:16px}
+    .modal-head,.modal-foot{padding:14px 16px}
+    .prof-hero .avatar.a-96{width:74px;height:74px;font-size:24px}
+    .prof-stats{grid-template-columns:1fr 1fr}
+    .kv{grid-template-columns:1fr;gap:2px}
+    .kv dt{margin-top:6px}
+
+    /* --- чаты --- */
+    .chat-shell{grid-template-columns:1fr;height:auto}
+    .chat-list{max-height:220px}
+    .chat-win{height:min(72vh,600px);min-height:400px}
+    .msgs{padding:14px}
+
+    /* --- ленты и тосты --- */
+    .lfg-card{min-width:252px}
+    #toasts{left:12px;right:12px;bottom:12px;max-width:none}
+    .toast{font-size:13.4px}
+
+    /* iOS не зумит страницу, если поле не меньше 16px */
+    .field input,.field select,.inp,.composer input,textarea.inp{font-size:16px}
+  }
+  @media (max-width:520px){
+    .composer{gap:8px}
+    .composer .btn{padding:12px 14px;font-size:13.5px}
+    .composer .send-label{display:none}
+    .bubble{max-width:86%}
+    .card-foot{flex-direction:column;align-items:stretch;gap:10px}
+    .card-foot .actions{justify-content:flex-end}
+    .actions{flex-wrap:wrap}
+    .results-info{font-size:12.8px}
+  }
+</style>
+</head>
+<body>
+<div class="bg-fx"></div>
+
+<header>
+  <div class="head-in">
+    <div class="logo" onclick="go('search')">
+      <div class="logo-mark">S</div>
+      <div class="logo-txt"><b>SQUADUP</b><span>поиск тиммейтов</span></div>
+    </div>
+    <nav id="nav">
+      <button class="nav-btn active" data-go="search">🔍 <span>Поиск</span></button>
+      <button class="nav-btn" data-go="squads">🛡️ <span>Сквады</span></button>
+      <button class="nav-btn" data-go="chats">💬 <span>Чаты</span><span class="dot" id="unreadBadge" style="display:none">0</span></button>
+      <button class="nav-btn" data-go="profile">📝 <span>Моя анкета</span></button>
+    </nav>
+    <div class="user-chip" id="userChip" style="display:none">
+      <div class="avatar a-40" id="meAvatar">?</div>
+      <div class="who"><b id="meNick">—</b><span id="meStatus">онлайн</span></div>
+      <div class="dropdown" id="userMenu">
+        <button onclick="go('profile')">📝 Моя анкета</button>
+        <button onclick="go('chats')">💬 Мои чаты</button>
+        <button onclick="openPushModal()">🔔 Уведомления<span id="pushMenuState"></span></button>
+        <button onclick="installApp()">📲 Установить приложение</button>
+        <div class="sep"></div>
+        <button onclick="window.open('/privacy.html','_blank')">📄 Политика конфиденциальности</button>
+        <div class="sep"></div>
+        <button onclick="logout()">↩︎ Выйти</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ===================== ПОИСК ===================== -->
+  <section class="view active" id="view-search">
+    <div class="hero">
+      <div>
+        <h1>Найди своих <em>тиммейтов</em> — в&nbsp;кооперативе и&nbsp;в&nbsp;ранкеде</h1>
+        <p>Анкеты живых игроков по <b id="gamesCount">40</b> играм: фильтруй по игре, режиму, платформе, региону, рангу и ролям. Пиши напрямую во встроенном чате и собирай пати за пару минут.</p>
+      </div>
+      <div class="stats" id="statsBox"></div>
+    </div>
+
+    <div class="lfg">
+      <div class="lfg-head">
+        <b><span class="lfg-pulse"></span> Сейчас ищут компанию <span class="hint" id="lfgCount"></span></b>
+        <button class="btn primary" id="lfgToggle">⚡ Я готов играть</button>
+      </div>
+      <div class="lfg-row" id="lfgRow"><div class="lfg-empty">Загрузка…</div></div>
+    </div>
+
+    <div class="filters">
+      <div class="filters-row">
+        <div class="field grow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="fq" placeholder="Поиск по нику или описанию…">
+        </div>
+        <div class="field">
+          <select id="fgame"><option value="">🎮 Любая игра</option></select>
+        </div>
+        <div class="seg" id="fmode">
+          <button data-v="" class="on">Любой</button>
+          <button data-v="coop">🤝 Кооп</button>
+          <button data-v="comp">🏆 Соревн.</button>
+        </div>
+      </div>
+      <div class="filters-row">
+        <div class="field"><select id="fplatform"><option value="">🖥 Любая платформа</option></select></div>
+        <div class="field"><select id="fregion"><option value="">🌍 Любой регион</option></select></div>
+        <div class="field"><select id="flang"><option value="">🗣 Любой язык</option></select></div>
+        <div class="field"><select id="fskill"><option value="">⭐ Любой уровень</option></select></div>
+        <div class="field"><select id="fvibe"><option value="">🎯 Любой настрой</option></select></div>
+        <div class="field"><select id="fsort">
+          <option value="rating">Сортировка: рейтинг</option>
+          <option value="online">Сначала в сети</option>
+          <option value="new">Сортировка: новые</option>
+          <option value="hours">Сортировка: часы</option>
+        </select></div>
+      </div>
+      <div class="filters-row">
+        <button class="chip" id="fonline" data-on="0">🟢 Онлайн сейчас</button>
+        <button class="chip" id="fmic" data-on="0">🎤 С микрофоном</button>
+        <div style="flex:1"></div>
+        <button class="reset" onclick="resetFilters()">Сбросить фильтры</button>
+      </div>
+    </div>
+
+    <div class="results-info">
+      <span id="resultsCount">Загрузка…</span>
+      <span class="hint" id="resultsHint"></span>
+    </div>
+    <div class="grid" id="cards"></div>
+  </section>
+
+  <!-- ===================== СКВАДЫ ===================== -->
+  <section class="view" id="view-squads">
+    <div class="section-head">
+      <div>
+        <h2 class="page-title">🛡️ Сквады ищут игроков</h2>
+        <div class="page-sub">Постоянные составы, кланы и группы по интересам. Подай заявку — капитан увидит её в своём кабинете.</div>
+      </div>
+      <button class="btn primary" onclick="openSquadForm()">＋ Создать сквад</button>
+    </div>
+    <div class="filters">
+      <div class="filters-row">
+        <div class="field grow"><select id="sgame"><option value="">🎮 Все игры</option></select></div>
+        <div class="field grow"><select id="sregion"><option value="">🌍 Все регионы</option></select></div>
+      </div>
+    </div>
+    <div class="grid" id="squads"></div>
+  </section>
+
+  <!-- ===================== ЧАТЫ ===================== -->
+  <section class="view" id="view-chats">
+    <div class="section-head">
+      <div>
+        <h2 class="page-title">💬 Чаты</h2>
+        <div class="page-sub">Диалоги с игроками. Сообщения живых людей приходят мгновенно, ответ появляется сам; демо-анкеты (с меткой <span class="tag">демо</span>) отвечают заготовленными фразами.</div>
+      </div>
+    </div>
+    <div class="chat-shell">
+      <div class="chat-list" id="chatList"></div>
+      <div class="chat-win" id="chatWin">
+        <div class="empty" style="margin:auto;border:0">
+          <div class="big">💬</div>
+          Выбери диалог слева — или отправь приглашение из поиска, чтобы начать новый.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== МОЯ АНКЕТА ===================== -->
+  <section class="view" id="view-profile">
+    <div class="section-head">
+      <div>
+        <h2 class="page-title">📝 Моя анкета</h2>
+        <div class="page-sub">Заполни один раз — и тебя увидят в поиске другие игроки. Анкету можно менять в любой момент.</div>
+      </div>
+      <div id="myListingState"></div>
+    </div>
+    <div class="panel-box" id="pushBox">
+      <h3 style="font-size:15.5px;margin-bottom:12px">🔔 Уведомления</h3>
+      <div id="pushStatus"></div>
+    </div>
+
+    <div class="panel-box" id="blockedBox">
+      <h3 style="font-size:15.5px;margin-bottom:12px">🚫 Заблокированные игроки</h3>
+      <div id="blockedList" class="hint">Загрузка…</div>
+    </div>
+
+    <div class="panel-box" id="privacyBox">
+      <h3 style="font-size:15.5px;margin-bottom:12px">🔐 Приватность и данные</h3>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn sm" onclick="downloadMyData()">⬇️ Скачать мои данные</button>
+        <button class="btn sm ghost" onclick="window.open('/privacy.html','_blank')">📄 Политика конфиденциальности</button>
+        <div style="flex:1"></div>
+        <button class="btn sm" style="border-color:rgba(255,92,138,.5);color:#ffb3c9"
+                onclick="confirmDeleteAccount()">🗑 Удалить аккаунт</button>
+      </div>
+      <p class="hint" style="margin:10px 0 0">Удаление стирает анкету, переписку, отзывы и подписки на уведомления без возможности восстановления.</p>
+    </div>
+
+    <div class="panel-box" id="accountsBox">
+      <h3 style="font-size:15.5px;margin-bottom:12px">🔗 Привязанные аккаунты</h3>
+      <div id="discordRow"></div>
+    </div>
+
+    <div class="panel-box">
+      <div class="form-grid">
+        <div><label class="lbl">Ник в игре</label><input class="inp" id="pNick"></div>
+        <div><label class="lbl">Возраст</label><input class="inp" id="pAge" type="number" min="12" max="99" value="20"></div>
+        <div><label class="lbl">Регион</label><select class="inp" id="pRegion"></select></div>
+        <div><label class="lbl">Уровень игры</label><select class="inp" id="pSkill"></select></div>
+        <div><label class="lbl">Настрой</label><select class="inp" id="pVibe"></select></div>
+        <div><label class="lbl">Discord / Telegram</label><input class="inp" id="pContact" placeholder="discord: nick  ·  @telegram" maxlength="60"></div>
+      </div>
+
+      <div style="margin-top:18px">
+        <label class="lbl">Игры (до 4)</label>
+        <div id="gameRows"></div>
+        <button class="btn sm ghost" onclick="addGameRow()">＋ Добавить игру</button>
+      </div>
+
+      <div style="margin-top:18px">
+        <label class="lbl">Платформы</label>
+        <div class="chips-wrap" id="pPlatforms"></div>
+      </div>
+
+      <div style="margin-top:18px">
+        <label class="lbl">Языки общения</label>
+        <div class="chips-wrap" id="pLangs"></div>
+      </div>
+
+      <div style="margin-top:18px">
+        <label class="lbl">Когда играю</label>
+        <div class="chips-wrap" id="pSchedule"></div>
+      </div>
+
+      <div style="margin-top:18px">
+        <label class="lbl">О себе</label>
+        <textarea class="inp" id="pAbout" placeholder="Например: ищу спокойное пати на вечер, микрофон есть, играю по 2–3 часа, без токсичности."></textarea>
+      </div>
+
+      <div style="margin-top:18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <button class="chip" id="pMic" data-on="0">🎤 Есть микрофон</button>
+        <div style="flex:1"></div>
+        <button class="btn primary" onclick="saveListing()">💾 Сохранить анкету</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"></div></div>
+<div id="toasts"></div>
+
+<script>
+/* =========================================================================
+   SQUADUP — клиент
+   ========================================================================= */
+const API = '';
+const state = {
+  token: localStorage.getItem('squadup_token') || null,
+  me: null,
+  meta: null,
+  players: [],
+  squads: [],
+  chats: [],
+  activeChat: null,
+  lastMsgId: 0,
+  pollTimer: null,
+  chatMeta: new Map(),
+  loginRequired: false,
+  cfg: { discord_enabled: false, push_enabled: false },
+  push: { available: false, subscribed: false, devices: 0, permission: 'default' },
+  outbox: [],
+};
+let deferredInstall = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
+window.addEventListener('appinstalled', () => { deferredInstall = null; toast('Приложение установлено 🎉', 'ok'); });
+
+/* ---------- утилиты ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function api(path, opts = {}, retry = true) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.token) headers['X-Token'] = state.token;
+  let res;
+  try {
+    res = await fetch(API + path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  } catch (e) {
+    // сеть отвалилась: один автоматический повтор для чтения
+    if (retry && (opts.method || 'GET') === 'GET') {
+      await new Promise(r => setTimeout(r, 900));
+      return api(path, opts, false);
+    }
+    throw new Error('Нет связи с сервером. Проверь интернет и обнови страницу.');
+  }
+  const isJson = (res.headers.get('content-type') || '').includes('application/json');
+  const data = isJson ? await res.json().catch(() => ({})) : {};
+  if (!res.ok) {
+    if (!isJson) {
+      // ответ пришёл не от приложения, а от прокси/хостинга (HTML-страница ошибки)
+      const hint = res.status >= 500
+        ? 'Сервер сейчас недоступен. Такое бывает при перезапуске или обрыве связи — обнови страницу через минуту.'
+        : 'Сервер ответил неожиданно (' + res.status + '). Обнови страницу.';
+      throw new Error(hint);
+    }
+    throw new Error(data.error || ('Ошибка ' + res.status));
+  }
+  return data;
+}
+
+function hashNum(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 100000;
+  return h;
+}
+function avatarStyle(nick) {
+  const h = hashNum(nick || 'x');
+  const a = h % 360, b = (a + 55) % 360;
+  return `background:linear-gradient(135deg,hsl(${a} 85% 62%),hsl(${b} 85% 55%))`;
+}
+function initials(nick) {
+  const parts = String(nick || '?').replace(/[^\p{L}\p{N}_]/gu, ' ').trim().split(/[\s_]+/);
+  return ((parts[0]?.[0] || '?') + (parts[1]?.[0] || '')).toUpperCase();
+}
+function timeAgo(iso) {
+  const d = new Date(iso); const sec = (Date.now() - d.getTime()) / 1000;
+  if (sec < 90) return 'только что';
+  if (sec < 3600) return Math.round(sec / 60) + ' мин назад';
+  if (sec < 86400) return Math.round(sec / 3600) + ' ч назад';
+  if (sec < 86400 * 7) return Math.round(sec / 86400) + ' дн назад';
+  return d.toLocaleDateString('ru-RU');
+}
+function clock(iso) { return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }); }
+function scrollBottom(el) { el.scrollTop = el.scrollHeight; }
+
+function toast(msg, kind = '', actions = []) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + kind;
+  t.innerHTML = `<div>${msg}</div>`;
+  if (actions.length) {
+    const wrap = document.createElement('div');
+    wrap.className = 't-actions';
+    actions.forEach(a => {
+      const b = document.createElement('button');
+      b.textContent = a.label;
+      b.onclick = () => { a.fn(); t.remove(); };
+      wrap.appendChild(b);
+    });
+    t.appendChild(wrap);
+  }
+  $('#toasts').appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(8px)'; t.style.transition = '.3s'; }, 5200);
+  setTimeout(() => t.remove(), 5600);
+}
+
+/* ---------- навигация ---------- */
+function go(view) {
+  $$('.view').forEach(v => v.classList.remove('active'));
+  $('#view-' + view).classList.add('active');
+  $$('#nav .nav-btn').forEach(b => b.classList.toggle('active', b.dataset.go === view));
+  $('#userMenu').classList.remove('open');
+  if (view === 'chats') { loadChats(); startPolling(); } else { stopPolling(); }
+  if (view === 'squads') loadSquads();
+  if (view === 'search') loadLooking();
+  if (view === 'profile') loadBlockedList();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+$$('#nav .nav-btn').forEach(b => b.onclick = () => go(b.dataset.go));
+$('#userChip').onclick = e => { e.stopPropagation(); $('#userMenu').classList.toggle('open'); };
+document.addEventListener('click', () => $('#userMenu').classList.remove('open'));
+
+/* ---------- авторизация ---------- */
+function requireLogin() {
+  const discordBlock = state.cfg.discord_enabled ? `
+    <div style="display:flex;align-items:center;gap:12px;margin:18px 0">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span class="hint">или</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+    <button class="btn" style="width:100%;background:#5865F2;border-color:transparent;color:#fff"
+            onclick="location.href='/api/auth/discord/login'">🎮 Войти через Discord</button>
+    <p class="hint">Надёжный вход: ник подтянется из Discord, пароль не нужен.</p>` : `
+    <p class="hint">💡 Discord-вход включается переменными <code>DISCORD_CLIENT_ID</code> и
+      <code>DISCORD_CLIENT_SECRET</code> на сервере — см. DEPLOY.md.</p>`;
+  openModal(`
+    <div class="modal-head"><h3>Вход в SQUADUP</h3></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-top:0">Придумай ник — под ним тебя будут видеть другие игроки. Пароль не нужен.</p>
+      <label class="lbl">Твой ник</label>
+      <input class="inp" id="loginNick" placeholder="Например: NightRaven" maxlength="32" autocomplete="off">
+      <div id="loginErr" style="color:var(--acc-3);font-size:13px;margin-top:8px"></div>
+      ${discordBlock}
+    </div>
+    <div class="modal-foot"><button class="btn primary" onclick="doLogin()">Войти и искать тиммейтов</button></div>
+  `);
+  setTimeout(() => { const i = $('#loginNick'); if (i) i.focus(); }, 60);
+}
+
+/* ---------- установка приложения (PWA) ---------- */
+async function installApp() {
+  $('#userMenu').classList.remove('open');
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (deferredInstall) {
+    deferredInstall.prompt();
+    const choice = await deferredInstall.userChoice.catch(() => null);
+    deferredInstall = null;
+    if (choice && choice.outcome === 'accepted') toast('Приложение установлено 🎉', 'ok');
+    return;
+  }
+  if (standalone) { toast('Ты уже в установленном приложении 🎮', 'ok'); return; }
+  const ua = navigator.userAgent;
+  const isIOS = /iphone|ipad|ipod/i.test(ua);
+  const isAndroid = /android/i.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+  const isDesktop = !isIOS && !isAndroid;
+  if (isIOS || isSafari) {
+    toast('iPhone/Safari: «Поделиться» → «На экран „Домой“» — иконка SQUADUP появится на телефоне 📲');
+  } else if (isAndroid) {
+    toast('Android/Chrome: меню ⋮ → «Установить приложение» → «Установить» 📲');
+  } else if (isDesktop) {
+    openModal(`
+      <div class="modal-head"><h3>📲 Установить SQUADUP на этот компьютер</h3>
+        <button class="x-btn" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <p style="margin-top:0"><b>Вариант 1 — установить прямо из браузера (Chrome, Edge, Brave):</b></p>
+        <ol style="color:#c2c7dc;font-size:14px;padding-left:20px;margin:8px 0 16px">
+          <li>В адресной строке нажми иконку <b>⊕ «Установить»</b> (справа) — или меню ⋮ → «Установить SQUADUP…».</li>
+          <li>Подтверди — приложение появится в меню «Пуск» / Launchpad / доке, отдельным окном и со своей иконкой.</li>
+        </ol>
+        <p><b>Вариант 2 — ярлык на рабочем столе (работает даже без установки в браузер):</b></p>
+        <ul style="color:#c2c7dc;font-size:14px;padding-left:20px;margin:8px 0 4px">
+          <li>Windows: двойной клик по <code>launcher\\start.bat</code>, ярлык — <code>launcher\\install-windows-shortcut.ps1</code>.</li>
+          <li>macOS/Linux: <code>./launcher/start.sh</code> (+ <code>squadup.desktop</code> для меню приложений).</li>
+        </ul>
+        <p class="hint">Подробности и скриншоты — в файле DEPLOY.md рядом с приложением.</p>
+      </div>
+      <div class="modal-foot"><button class="btn primary" onclick="closeModal()">Понятно</button></div>
+    `);
+  }
+}
+
+/* ---------- привязанные аккаунты ---------- */
+function renderAccounts() {
+  const row = $('#discordRow'); if (!row || !state.me) return;
+  const d = state.me.discord || { linked: false, username: '' };
+  if (d.linked) {
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span class="avatar a-40" style="background:#5865F2;color:#fff">D</span>
+        <div style="flex:1;min-width:180px">
+          <b>Discord — привязан</b>
+          <div class="hint">${esc(d.username || 'аккаунт подключён')}</div>
+        </div>
+        <button class="btn sm ghost" onclick="unlinkDiscord()">Отвязать</button>
+      </div>`;
+  } else {
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span class="avatar a-40" style="background:rgba(88,101,242,.25);color:#aeb4ff">D</span>
+        <div style="flex:1;min-width:180px">
+          <b>Discord не привязан</b>
+          <div class="hint">Привязка подтверждает аккаунт и подставляет ник из Discord.</div>
+        </div>
+        ${state.me.discord_enabled
+          ? `<button class="btn sm" style="background:#5865F2;border-color:transparent;color:#fff"
+               onclick="linkDiscord()">Привязать Discord</button>`
+          : '<span class="hint">включается настройкой сервера</span>'}
+      </div>`;
+  }
+}
+function linkDiscord() {
+  location.href = '/api/auth/discord/login?link=' + encodeURIComponent(state.token || '');
+}
+async function unlinkDiscord() {
+  try {
+    await api('/api/unlink-discord', { method: 'POST' });
+    toast('Discord отвязан от анкеты', 'ok');
+    await bootstrapUser();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function doLogin() {
+  const nick = $('#loginNick').value.trim();
+  if (!nick) { $('#loginErr').textContent = 'Введите ник'; return; }
+  try {
+    const r = await api('/api/login', { method: 'POST', body: { nickname: nick } });
+    state.token = r.token;
+    localStorage.setItem('squadup_token', r.token);
+    closeModal();
+    await bootstrapUser();
+    toast('Добро пожаловать, <b>' + esc(r.nickname) + '</b>! Демо-анкеты уже загружены — ищи своих.', 'ok');
+  } catch (e) { $('#loginErr').textContent = e.message; }
+}
+function logout() {
+  localStorage.removeItem('squadup_token');
+  state.token = null; state.me = null;
+  $('#userChip').style.display = 'none';
+  location.reload();
+}
+
+/* ---------- модалки ---------- */
+function openModal(html) {
+  $('#modal').innerHTML = html;
+  $('#modalBg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal() {
+  $('#modalBg').classList.remove('open');
+  $('#modal').innerHTML = '';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+/* ---------- загрузка метаданных ---------- */
+async function loadMeta() {
+  state.meta = await api('/api/games');
+  const gsel = $('#fgame'), ssel = $('#sgame');
+  state.meta.games.forEach(g => {
+    const modes = g.modes.map(m => modeIcon(m)).join(' ');
+    const opt = `<option value="${g.id}">${g.emoji} ${esc(g.name)} — ${g.genre} ${modes}</option>`;
+    gsel.insertAdjacentHTML('beforeend', opt);
+    ssel.insertAdjacentHTML('beforeend', `<option value="${g.id}">${g.emoji} ${esc(g.name)}</option>`);
+  });
+  const rgOpts = state.meta.regions.map(r => `<option value="${r.id}">${r.flag} ${esc(r.label)}</option>`).join('');
+  $('#fregion').insertAdjacentHTML('beforeend', rgOpts);
+  $('#sregion').insertAdjacentHTML('beforeend', state.meta.regions.map(r => `<option value="${r.id}">${r.flag} ${esc(r.label)}</option>`).join(''));
+  $('#flang').insertAdjacentHTML('beforeend', state.meta.languages.map(l => `<option value="${esc(l)}">🗣 ${esc(l)}</option>`).join(''));
+  $('#fskill').insertAdjacentHTML('beforeend', Object.entries(state.meta.skills).map(([v, l]) => `<option value="${v}">⭐ от «${esc(l)}»</option>`).join(''));
+  $('#fvibe').insertAdjacentHTML('beforeend', Object.entries(state.meta.vibes).map(([v, l]) => `<option value="${v}">🎯 ${esc(l)}</option>`).join(''));
+  $('#fplatform').insertAdjacentHTML('beforeend', Object.entries(state.meta.platforms).map(([v, l]) => `<option value="${v}">🖥 ${esc(l)}</option>`).join(''));
+  $('#pRegion').innerHTML = state.meta.regions.map(r => `<option value="${r.id}">${r.flag} ${esc(r.label)}</option>`).join('');
+  $('#pSkill').innerHTML = Object.entries(state.meta.skills).map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
+  $('#pVibe').innerHTML = Object.entries(state.meta.vibes).map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('');
+  $('#pPlatforms').innerHTML = Object.entries(state.meta.platforms).map(([v, l]) =>
+    `<button class="chip" data-plat="${v}" data-on="0">${esc(l)}</button>`).join('');
+  $('#pLangs').innerHTML = state.meta.languages.map(l =>
+    `<button class="chip" data-lang="${esc(l)}" data-on="0">${esc(l)}</button>`).join('');
+  $('#pSchedule').innerHTML = state.meta.schedule_slots.map(s =>
+    `<button class="chip" data-sched="${esc(s)}" data-on="0">${esc(s)}</button>`).join('');
+  bindChips('#pPlatforms', 'plat'); bindChips('#pLangs', 'lang'); bindChips('#pSchedule', 'sched');
+}
+function modeIcon(m) { return m === 'coop' ? '🤝' : m === 'comp' ? '🏆' : '⚔️'; }
+function bindChips(sel, attr) {
+  $$(sel + ' .chip').forEach(c => c.onclick = () => {
+    c.dataset.on = c.dataset.on === '1' ? '0' : '1';
+    c.classList.toggle('on', c.dataset.on === '1');
+  });
+}
+function chipsVal(sel, attr) {
+  return $$(sel + ' .chip').filter(c => c.dataset.on === '1').map(c => c.dataset[attr]);
+}
+
+/* =========================================================================
+   Уведомления (Web Push), бейдж на иконке и очередь сообщений офлайн
+   ========================================================================= */
+function urlB64ToUint8Array(base64) {
+  const padding = '='.repeat((4 - base64.length % 4) % 4);
+  const raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function swRegistration() {
+  if (!('serviceWorker' in navigator)) return null;
+  try { return await navigator.serviceWorker.ready; } catch { return null; }
+}
+
+function pushSupported() {
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
+async function sendTokenToSW() {
+  const reg = await swRegistration();
+  if (reg && reg.active && state.token) reg.active.postMessage({ type: 'token', token: state.token });
+  // дублируем очередь в IndexedDB, чтобы фоновый sync смог её отправить
+  if (reg && reg.active) reg.active.postMessage({ type: 'outbox', outbox: state.outbox });
+}
+
+function badgesSupported() {
+  // на Linux-десктопе App Badge не работает и роняет вкладку в некоторых сборках Chromium
+  const ua = navigator.userAgent || '';
+  if (/Linux/i.test(ua) && !/Android/i.test(ua)) return false;
+  return true;
+}
+
+async function updateAppBadge(count) {
+  if (!badgesSupported()) return;
+  try {
+    if (count > 0 && navigator.setAppBadge) await navigator.setAppBadge(count);
+    else if (navigator.clearAppBadge) await navigator.clearAppBadge();
+  } catch {}
+  const reg = await swRegistration();
+  if (reg && reg.active) reg.active.postMessage({ type: 'badge', count });
+}
+
+async function loadPushState() {
+  const supported = pushSupported();
+  let server = { available: false, public_key: '', subscribed: false, devices: 0 };
+  try { server = await api('/api/push/state'); } catch {}
+  state.push = {
+    available: supported && server.available,
+    supported,
+    subscribed: !!server.subscribed,
+    devices: server.devices || 0,
+    public_key: server.public_key || '',
+    permission: ('Notification' in window) ? Notification.permission : 'unsupported',
+  };
+  renderPush();
+}
+
+function renderPush() {
+  renderPushInto('pushStatus');
+  renderPushInto('pushModalStatus');
+}
+
+function renderPushInto(id) {
+  const p = state.push;
+  const box = document.getElementById(id);
+  const menu = document.getElementById('pushMenuState');
+  if (menu) menu.innerHTML = p.subscribed ? ' <span style="color:var(--green)">● вкл</span>' : '';
+  if (!box) return;
+  if (!p.supported) {
+    box.innerHTML = '<p class="hint" style="margin:0">Этот браузер не поддерживает уведомления. На iPhone они работают у приложения, добавленного на экран «Домой» (iOS 16.4+).</p>';
+    return;
+  }
+  if (!p.available) {
+    box.innerHTML = '<p class="hint" style="margin:0">Уведомления выключены на сервере: нужна библиотека <code>cryptography</code> (см. requirements.txt).</p>';
+    return;
+  }
+  const stateText = p.permission === 'denied'
+    ? '<span class="tag pvp">запрещено в браузере</span>'
+    : p.subscribed
+      ? '<span class="tag coop">включены · устройств: ' + p.devices + '</span>'
+      : '<span class="tag">не включены</span>';
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <div style="margin-bottom:6px">Статус: ${stateText}</div>
+        <div class="hint">Сообщения из чатов, приглашения и заявки в сквады — даже когда приложение закрыто.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${p.subscribed
+          ? `<button class="btn sm" onclick="sendTestPush()">🔔 Тест</button>
+             <button class="btn sm ghost" onclick="schedulePush()">⏱ Через 30 сек</button>
+             <button class="btn sm ghost" onclick="disablePush()">Выключить</button>`
+          : `<button class="btn sm primary" onclick="enablePush()">🔔 Включить уведомления</button>`}
+      </div>
+    </div>` + (p.permission === 'denied'
+      ? '<p class="hint" style="margin:10px 0 0">Разреши уведомления в настройках браузера: иконка замка в адресной строке → «Уведомления» → «Разрешить».</p>' : '');
+}
+
+async function enablePush() {
+  if (!state.token) return requireLogin();
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Браузер не дал разрешение на уведомления', 'err'); await loadPushState(); return; }
+    const reg = await swRegistration();
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlB64ToUint8Array(state.push.public_key),
+    });
+    const payload = sub.toJSON();
+    const r = await api('/api/push/subscribe', {
+      method: 'POST',
+      body: { endpoint: payload.endpoint, keys: payload.keys },
+    });
+    toast('Уведомления включены ✅ Устройств: ' + r.devices, 'ok');
+    await loadPushState();
+    try { await reg.periodicSync.register('squadup-unread', { minInterval: 3 * 60 * 60 * 1000 }); } catch {}
+  } catch (e) {
+    toast('Не удалось включить уведомления: ' + esc(e.message), 'err');
+  }
+}
+
+async function disablePush() {
+  try {
+    const reg = await swRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    if (sub) {
+      await api('/api/push/unsubscribe', { method: 'POST', body: { endpoint: sub.endpoint } }).catch(() => {});
+      await sub.unsubscribe().catch(() => {});
+    }
+    toast('Уведомления выключены', 'ok');
+    await loadPushState();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function sendTestPush() {
+  try {
+    const r = await api('/api/push/test', { method: 'POST' });
+    if (r.sent > 0) toast('Тестовое уведомление отправлено 🔔 Сверни приложение, чтобы увидеть его.', 'ok');
+    else toast('Сервер не смог доставить (подписок: ' + r.devices + '). Попробуй включить уведомления заново.', 'err');
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function schedulePush() {
+  try {
+    const r = await api('/api/push/schedule', { method: 'POST', body: { delay: 30, text: 'Фоновая доставка работает — приложение можно закрыть' } });
+    toast('Уведомление придёт через ' + r.delay + ' сек. Закрой приложение — оно всё равно придёт ⏱', 'ok');
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function openPushModal() {
+  if (!state.token) return requireLogin();
+  openModal(`
+    <div class="modal-head"><h3>🔔 Уведомления</h3><button class="x-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div id="pushModalStatus"><div class="spin" style="margin:10px auto"></div></div>
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+        <div class="hint">Что приходит: сообщения из чатов, приглашения от игроков, заявки в твои сквады и напоминание о непрочитанных. Работает и когда приложение свёрнуто или закрыто.</div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn ghost" onclick="closeModal()">Закрыть</button></div>
+  `);
+  await loadPushState();
+}
+
+/* ---------- приватность: экспорт и удаление аккаунта ---------- */
+async function downloadMyData() {
+  if (!state.token) return requireLogin();
+  try {
+    const res = await fetch('/api/me/export', { headers: { 'X-Token': state.token } });
+    if (!res.ok) throw new Error('Не удалось подготовить файл');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'squadup-data-' + (state.me ? state.me.nickname : 'export') + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast('Файл с твоими данными скачан ⬇️', 'ok');
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+function confirmDeleteAccount() {
+  if (!state.token) return requireLogin();
+  openModal(`
+    <div class="modal-head"><h3 style="color:var(--acc-3)">🗑 Удалить аккаунт</h3>
+      <button class="x-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p style="margin-top:0">Будут удалены <b>безвозвратно</b>:</p>
+      <ul style="color:#c2c7dc;font-size:14px;padding-left:20px">
+        <li>твоя анкета и место в поиске;</li>
+        <li>вся переписка в чатах;</li>
+        <li>отзывы, которые ты оставил(а);</li>
+        <li>подписки на уведомления на всех устройствах;</li>
+        <li>созданные тобой сквады.</li>
+      </ul>
+      <label class="lbl" style="margin-top:14px">Напиши <b>УДАЛИТЬ</b> заглавными буквами для подтверждения</label>
+      <input class="inp" id="delConfirm" placeholder="УДАЛИТЬ" autocomplete="off">
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="closeModal()">Отмена</button>
+      <button class="btn" style="border-color:rgba(255,92,138,.6);color:#ffb3c9" onclick="deleteAccount()">Удалить навсегда</button>
+    </div>`);
+}
+
+async function deleteAccount() {
+  const val = ($('#delConfirm').value || '').trim().toUpperCase();
+  if (val !== 'УДАЛИТЬ' && val !== 'DELETE') {
+    toast('Для подтверждения напиши УДАЛИТЬ', 'err');
+    return;
+  }
+  try {
+    await api('/api/me', { method: 'DELETE' });
+    closeModal();
+    localStorage.removeItem('squadup_token');
+    localStorage.removeItem('squadup_outbox');
+    try { const reg = await swRegistration(); if (reg && reg.pushManager) { const sub = await reg.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } } catch {}
+    toast('Аккаунт удалён. Спасибо, что был(а) с нами 👋', 'ok');
+    setTimeout(() => location.reload(), 1500);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function loadBlockedList() {
+  const box = $('#blockedList'); if (!box) return;
+  if (!state.token) { box.textContent = 'Нужен вход.'; return; }
+  try {
+    const d = await api('/api/blocks');
+    if (!d.items.length) {
+      box.innerHTML = 'Никого не заблокировано. Блокировка скрывает вас друг от друга: анкета не появится в поиске, переписка станет недоступной.';
+      return;
+    }
+    box.innerHTML = d.items.map(b => `
+      <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <div class="avatar a-40" style="${avatarStyle(b.nick)}">${esc(initials(b.nick))}</div>
+        <div style="flex:1;min-width:0"><b>${esc(b.nick)}</b>
+          <div class="hint">заблокирован ${timeAgo(b.created_at)}</div></div>
+        <button class="btn sm ghost" onclick="unblockPlayer('${b.blocked_user_id}','${esc(b.nick)}')">Разблокировать</button>
+      </div>`).join('');
+  } catch (e) { box.textContent = e.message; }
+}
+
+/* ---------- очередь сообщений офлайн ---------- */
+function loadOutbox() {
+  try { state.outbox = JSON.parse(localStorage.getItem('squadup_outbox') || '[]'); } catch { state.outbox = []; }
+}
+function saveOutbox() {
+  localStorage.setItem('squadup_outbox', JSON.stringify(state.outbox));
+  sendTokenToSW();
+}
+async function flushOutbox() {
+  if (!state.outbox.length || !navigator.onLine) return;
+  const rest = [];
+  for (const item of state.outbox) {
+    try {
+      const res = await fetch(item.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Token': state.token },
+        body: JSON.stringify(item.body),
+      });
+      if (!res.ok) rest.push(item);
+    } catch { rest.push(item); }
+  }
+  const sentCount = state.outbox.length - rest.length;
+  state.outbox = rest;
+  saveOutbox();
+  if (sentCount) {
+    toast(`Отправлено отложенных сообщений: ${sentCount} ✅`, 'ok');
+    if (state.activeChat) fetchMessages();
+    loadChats();
+  }
+}
+window.addEventListener('online', () => { flushOutbox(); });
+window.addEventListener('offline', () => { toast('Нет сети — сообщения встанут в очередь и отправятся сами 📶'); });
+
+async function loadStats() {
+  try {
+    const s = await api('/api/stats');
+    const gc = $('#gamesCount'); if (gc) gc.textContent = s.games;
+    $('#statsBox').innerHTML = `
+      <div class="stat"><b>${s.online}</b><span>онлайн сейчас</span></div>
+      <div class="stat"><b>${s.total}</b><span>анкет игроков</span></div>
+      <div class="stat"><b>${s.squads}</b><span>сквадов набирают</span></div>
+      <div class="stat"><b>${s.games}</b><span>игр в каталоге</span></div>`;
+  } catch (e) {}
+}
+
+/* ---------- «Ищу сейчас» ---------- */
+function lookAgo(iso) {
+  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (s < 60) return 'только что';
+  return Math.round(s / 60) + ' мин назад';
+}
+
+async function loadLooking() {
+  if (!state.meta) return;
+  try {
+    const p = new URLSearchParams();
+    if ($('#fgame').value) p.set('game', $('#fgame').value);
+    if ($('#fregion').value) p.set('region', $('#fregion').value);
+    const d = await api('/api/looking?' + p.toString());
+    state.lfg = d;
+    const btn = $('#lfgToggle');
+    if (d.me_looking) { btn.textContent = '⏹ Завершить поиск'; btn.classList.add('on'); }
+    else { btn.textContent = '⚡ Я готов играть'; btn.classList.remove('on'); }
+    $('#lfgCount').textContent = d.count
+      ? `— ${d.count} ${plural(d.count, ['игрок', 'игрока', 'игроков'])} прямо сейчас`
+      : '— пока никого';
+    const row = $('#lfgRow');
+    if (!d.items.length) {
+      row.innerHTML = `<div class="lfg-empty">${d.me_looking
+        ? 'Ты в ленте — ждём других игроков. Как только кто-то появится, он будет здесь ⚡'
+        : 'Сейчас тихо. Нажми «Я готов играть» — и появишься здесь первым ⚡'}</div>`;
+      return;
+    }
+    row.innerHTML = d.items.map(i => `
+      <div class="lfg-card">
+        <div class="top">
+          <div class="av-wrap">
+            <div class="avatar a-40" style="${avatarStyle(i.nick)}">${esc(initials(i.nick))}</div>
+            <div class="online-dot"></div>
+          </div>
+          <div style="min-width:0;flex:1">
+            <div class="nick" style="font-size:14.6px">${esc(i.nick)}${i.is_me ? ' <span class="tag you">вы</span>' : ''}</div>
+            <div class="hint">${i.region_flag} ${esc(i.region_label)} · ${i.mic ? '🎤' : '🔇'} · ${lookAgo(i.looking_at)}</div>
+          </div>
+        </div>
+        <div class="topic">
+          ${i.games.slice(0, 3).map(g => `<span class="tag">${g.emoji} ${esc(g.short)}</span>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:auto">
+          ${i.is_me
+            ? `<button class="btn sm ghost" style="flex:1" onclick="toggleLooking()">⏹ Завершить поиск</button>`
+            : `<button class="btn sm primary" style="flex:1" onclick="openInvite(${i.id})">✉︎ Позвать</button>
+               <button class="btn sm ghost" onclick="openProfile(${i.id})">Профиль</button>`}
+        </div>
+      </div>`).join('');
+  } catch (e) { /* лента не критична */ }
+}
+
+async function toggleLooking() {
+  if (!state.token) return requireLogin();
+  const on = !(state.lfg && state.lfg.me_looking);
+  try {
+    const r = await api('/api/looking', { method: 'POST', body: { on } });
+    if (on) toast('Ты в ленте «Ищу сейчас» — тебя увидят игроки' +
+      (state.lfg ? ` в ближайшие ${state.lfg.window_minutes} мин` : '') + ' ⚡', 'ok');
+    else toast('Поиск компании остановлен', 'ok');
+    await loadLooking();
+  } catch (e) {
+    if (String(e.message).includes('анкет')) {
+      toast(esc(e.message), 'err', [{ label: '📝 Заполнить анкету', fn: () => go('profile') }]);
+    } else toast(esc(e.message), 'err');
+  }
+}
+
+/* ---------- копирование контакта ---------- */
+function copyText(el) {
+  const text = el.dataset.text || '';
+  const done = () => toast('Скопировано: <b>' + esc(text) + '</b>', 'ok');
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) { toast('Контакт: ' + esc(text)); }
+  ta.remove();
+}
+
+/* ---------- отзывы ---------- */
+let reviewStar = 5;
+function setReviewStar(n) {
+  reviewStar = n;
+  $$('#starRow button').forEach(b => b.classList.toggle('on', +b.dataset.star <= n));
+}
+function toggleReviewForm() {
+  const f = $('#reviewForm');
+  f.style.display = f.style.display === 'none' || !f.style.display ? 'block' : 'none';
+  if (f.style.display === 'block') setReviewStar(reviewStar);
+}
+async function submitReview(id) {
+  if (!state.token) return requireLogin();
+  const text = ($('#revText')?.value || '').trim();
+  try {
+    const r = await api('/api/players/' + id + '/review', { method: 'POST', body: { rating: reviewStar, text } });
+    toast(r.updated ? 'Отзыв обновлён ⭐' : 'Спасибо за отзыв! Он появился в профиле ✅', 'ok');
+    await loadPlayers();
+    openProfile(id);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- поиск игроков ---------- */
+let searchTimer = null;
+function bindFilters() {
+  const on = (sel, ev, fn) => { const el = $(sel); el.addEventListener(ev, fn); };
+  on('#fq', 'input', () => debounceSearch());
+  ['#fgame', '#fplatform', '#fregion', '#flang', '#fskill', '#fvibe', '#fsort'].forEach(s =>
+    on(s, 'change', () => loadPlayers()));
+  $$('#fmode button').forEach(b => b.onclick = () => {
+    $$('#fmode button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); loadPlayers();
+  });
+  ['#fonline', '#fmic'].forEach(s => $(s).onclick = () => {
+    const el = $(s); el.dataset.on = el.dataset.on === '1' ? '0' : '1';
+    el.classList.toggle('on', el.dataset.on === '1'); loadPlayers();
+  });
+}
+function debounceSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(loadPlayers, 280); }
+
+function currentFilters() {
+  const p = new URLSearchParams();
+  const v = (s) => $(s).value;
+  if (v('#fq')) p.set('q', v('#fq'));
+  if (v('#fgame')) p.set('game', v('#fgame'));
+  const mode = $('#fmode button.on')?.dataset.v; if (mode) p.set('mode', mode);
+  if (v('#fplatform')) p.set('platform', v('#fplatform'));
+  if (v('#fregion')) p.set('region', v('#fregion'));
+  if (v('#flang')) p.set('lang', v('#flang'));
+  if (v('#fskill')) p.set('skill', v('#fskill'));
+  if (v('#fvibe')) p.set('vibe', v('#fvibe'));
+  if ($('#fonline').dataset.on === '1') p.set('online', '1');
+  if ($('#fmic').dataset.on === '1') p.set('mic', '1');
+  p.set('sort', v('#fsort'));
+  p.set('exclude_me', '1');
+  return p;
+}
+function resetFilters() {
+  ['#fq', '#fgame', '#fplatform', '#fregion', '#flang', '#fskill', '#fvibe'].forEach(s => $(s).value = '');
+  $('#fsort').value = 'rating';
+  $$('#fmode button').forEach((b, i) => b.classList.toggle('on', i === 0));
+  ['#fonline', '#fmic'].forEach(s => { $(s).dataset.on = '0'; $(s).classList.remove('on'); });
+  loadPlayers();
+}
+
+async function loadPlayers() {
+  $('#cards').innerHTML = '<div class="spin"></div>';
+  try {
+    const data = await api('/api/players?' + currentFilters().toString());
+    state.players = data.items;
+    renderCards(data);
+  } catch (e) {
+    $('#cards').innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="big">⚠️</div>
+      ${esc(e.message)}<br><br>
+      <button class="btn sm ghost" onclick="loadPlayers()">Попробовать снова</button></div>`;
+    $('#resultsCount').textContent = '';
+    $('#resultsHint').textContent = '';
+  }
+}
+
+function gameLine(g) {
+  return `<div class="gl-row">
+    <div class="em">${g.emoji}</div>
+    <div class="gi"><b>${esc(g.short)}</b><span>${esc(g.rank)} · ${esc(g.role)} · ${g.hours} ч</span></div>
+    <div class="topic">${g.modes.map(m => `<span class="tag ${m}">${m === 'coop' ? 'Кооп' : m === 'comp' ? 'Соревн.' : 'PvP'}</span>`).join('')}</div>
+  </div>`;
+}
+
+function renderCards(data) {
+  const items = data.items;
+  const word = plural(items.length, ['анкета', 'анкеты', 'анкет']);
+  $('#resultsCount').innerHTML = `Найдено <b>${items.length}</b> ${word}`;
+  $('#resultsHint').textContent = items.length ? 'Кнопка «Позвать» откроет чат с игроком' : '';
+  if (!items.length) {
+    $('#cards').innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="big">🕹️</div>
+      Под такие фильтры никто не подошёл.<br>Попробуй ослабить условия или <button class="btn sm ghost" onclick="resetFilters()">сбросить фильтры</button></div>`;
+    return;
+  }
+  $('#cards').innerHTML = items.map(p => `
+    <article class="card ${p.is_me ? 'mine' : ''}">
+      <div class="card-top">
+        <div class="av-wrap">
+          <div class="avatar a-52" style="${avatarStyle(p.nick)}">${esc(initials(p.nick))}</div>
+          <div class="online-dot ${p.online ? '' : 'off'}" title="${p.online ? 'Онлайн' : 'Был(а) ' + timeAgo(p.last_seen)}"></div>
+        </div>
+        <div class="card-id">
+          <div class="nick">${esc(p.nick)}<span class="age">${p.age} лет</span>
+            ${p.verified ? '<span class="verif" title="Проверенный игрок">✔︎</span>' : ''}
+          </div>
+          <div class="meta">
+            <span>${p.region_flag} ${esc(p.region_label)}</span>
+            <span>${p.online ? '🟢 онлайн' : '⚪ ' + timeAgo(p.last_seen)}</span>
+            <span>${p.mic ? '🎤 микрофон' : '🔇 без микро'}</span>
+          </div>
+          <div class="topic">
+            ${p.is_me ? '<span class="tag you">Это ваша анкета</span>' : ''}
+            <span class="tag">${esc(p.skill_label)}</span>
+            <span class="tag">${esc(p.vibe_label)}</span>
+            <span class="tag">${esc(p.languages.slice(0, 2).join(' · '))}</span>
+          </div>
+        </div>
+      </div>
+      <div class="gl">${p.games.map(gameLine).join('')}</div>
+      <div class="about">${esc(p.about)}</div>
+      <div class="hint">⏰ ${esc(p.schedule.join(', '))}</div>
+      <div class="card-foot">
+        <div class="rate">⭐ <b>${p.rating.toFixed(1)}</b> · ${p.reviews_count} оценок · ${p.hours} ч в играх</div>
+        <div class="actions">
+          ${p.is_me
+            ? '<button class="btn sm" onclick="go(\'profile\')">Редактировать</button>'
+            : `<button class="btn sm ghost" onclick="openProfile(${p.id})">Профиль</button>
+               <button class="btn sm primary" onclick="openInvite(${p.id})">Позвать</button>`}
+        </div>
+      </div>
+    </article>`).join('');
+}
+function plural(n, f) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return f[0];
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return f[1];
+  return f[2];
+}
+
+/* ---------- профиль игрока ---------- */
+async function openProfile(id) {
+  openModal('<div class="modal-body"><div class="spin"></div></div>');
+  const p = await api('/api/players/' + id);
+  reviewStar = (p.my_review && p.my_review.rating) || 5;
+  openModal(`
+    <div class="modal-head">
+      <h3>Профиль игрока</h3>
+      <button class="x-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="prof-hero">
+        <div class="avatar a-96" style="${avatarStyle(p.nick)}">${esc(initials(p.nick))}</div>
+        <div style="flex:1;min-width:210px">
+          <div class="nick" style="font-size:22px">${esc(p.nick)}
+            ${p.verified ? '<span class="verif">✔︎ проверен</span>' : ''}
+            <span class="age">${p.age} лет</span></div>
+          <div class="meta" style="margin-top:8px">
+            <span>${p.region_flag} ${esc(p.region_label)}</span>
+            <span>${p.online ? '🟢 онлайн сейчас' : '⚪ был(а) ' + timeAgo(p.last_seen)}</span>
+            <span>${p.mic ? '🎤 микрофон есть' : '🔇 без микрофона'}</span>
+          </div>
+          <div class="topic" style="margin-top:10px">
+            <span class="tag">${esc(p.skill_label)}</span>
+            <span class="tag">${esc(p.vibe_label)}</span>
+            ${p.languages.map(l => `<span class="tag">🗣 ${esc(l)}</span>`).join('')}
+            ${p.platforms.map(pl => `<span class="tag">${esc(state.meta.platforms[pl] || pl)}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="prof-stats">
+        <div class="mini"><b>⭐ ${p.rating.toFixed(1)}</b><span>рейтинг</span></div>
+        <div class="mini"><b>${p.reviews_count}</b><span>оценок</span></div>
+        <div class="mini"><b>${p.hours}</b><span>часов в играх</span></div>
+        <div class="mini"><b>${p.games.length}</b><span>игр в профиле</span></div>
+      </div>
+
+      <h3 style="font-size:15.5px;margin-bottom:10px">🎮 Игры и роли</h3>
+      <div class="gl" style="margin-bottom:18px">${p.games.map(gameLine).join('')}</div>
+
+      <h3 style="font-size:15.5px;margin-bottom:8px">📝 О себе</h3>
+      <p style="color:#c2c7dc;font-size:14px;margin-top:0">${esc(p.about)}</p>
+      <p class="hint">⏰ Играет: ${esc(p.schedule.join(', '))}</p>
+
+      ${p.contact ? `<div class="copy-tag">🔗 <span>${esc(p.contact)}</span>
+        <button onclick="copyText(this)" data-text="${esc(p.contact)}">копировать</button></div>` : ''}
+      ${p.is_looking ? '<div class="copy-tag" style="border-color:rgba(55,227,155,.5);color:#8bf0c4">⚡ Сейчас ищет компанию — ' + lookAgo(p.looking_at) + '</div>' : ''}
+
+      <h3 style="font-size:15.5px;margin:18px 0 10px">💬 Отзывы тиммейтов</h3>
+      ${(p.reviews && p.reviews.length) ? p.reviews.map(r => `
+        <div class="review"><b>${esc(r.author)}</b><span>${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)} · ${timeAgo(r.date)}</span>
+        <p>${esc(r.text)}</p></div>`).join('') : '<p class="hint">Пока нет отзывов — стань первым, кто сыграет с этим игроком.</p>'}
+
+      ${(!p.is_me && state.token) ? `
+        <div style="margin-top:14px">
+          ${p.my_review ? `<p class="hint">Твой отзыв: <b style="color:var(--amber)">${'★'.repeat(p.my_review.rating)}</b>${p.my_review.text ? ' — «' + esc(p.my_review.text) + '»' : ''}</p>` : ''}
+          <button class="btn sm ${p.my_review ? 'ghost' : 'primary'}" onclick="toggleReviewForm()">
+            ${p.my_review ? '✏️ Изменить свой отзыв' : '✍️ Оставить отзыв'}</button>
+          <div id="reviewForm" style="display:none;margin-top:14px;border:1px solid var(--border);border-radius:14px;padding:14px;background:rgba(0,0,0,.2)">
+            <label class="lbl">Оценка</label>
+            <div class="stars" id="starRow">
+              ${[1, 2, 3, 4, 5].map(n => `<button data-star="${n}" onclick="setReviewStar(${n})">★</button>`).join('')}
+            </div>
+            <label class="lbl" style="margin-top:13px">Комментарий</label>
+            <textarea class="inp" id="revText" placeholder="Как игралось вместе? Был ли микрофон, вовремя ли пришёл…">${p.my_review ? esc(p.my_review.text || '') : ''}</textarea>
+            <div style="margin-top:12px"><button class="btn primary" onclick="submitReview(${p.id})">Отправить отзыв</button></div>
+          </div>
+        </div>` : ''}
+    </div>
+    <div class="modal-foot">
+      ${p.is_me ? '' : `
+        <button class="btn ghost" onclick="openReportModal('player', ${p.id}, '${esc(p.nick)}')">⚠️ Жалоба</button>
+        <button class="btn ghost" onclick="blockPlayer(${p.id}, '${esc(p.nick)}')">🚫 Заблокировать</button>`}
+      <button class="btn ghost" onclick="closeModal()">Закрыть</button>
+      ${p.is_me ? '' : `<button class="btn primary" onclick="openInvite(${p.id})">✉︎ Позвать в группу</button>`}
+    </div>`);
+}
+
+/* ---------- модерация: жалобы и блокировки ---------- */
+async function blockPlayer(listingId, nick) {
+  if (!state.token) return requireLogin();
+  if (!confirm('Заблокировать ' + nick + '?\n\nВы не будете видеть друг друга: анкета исчезнет из поиска, переписка станет недоступной.')) return;
+  try {
+    const r = await api('/api/block', { method: 'POST', body: { listing_id: listingId } });
+    toast('Игрок <b>' + esc(r.blocked_nick) + '</b> заблокирован 🚫', 'ok',
+      [{ label: 'Отменить', fn: () => unblockPlayer(r.blocked_user_id, r.blocked_nick) }]);
+    closeModal();
+    loadPlayers();
+    loadChats();
+    loadBlockedList();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function blockChatUser(chatId) {
+  if (!state.token) return requireLogin();
+  if (!confirm('Заблокировать собеседника? Переписка станет недоступной.')) return;
+  try {
+    const r = await api('/api/block', { method: 'POST', body: { chat_id: chatId } });
+    toast('Игрок <b>' + esc(r.blocked_nick) + '</b> заблокирован 🚫', 'ok',
+      [{ label: 'Отменить', fn: () => unblockPlayer(r.blocked_user_id, r.blocked_nick) }]);
+    loadBlockedList();
+    state.activeChat = null;
+    $('#chatWin').innerHTML = '<div class="empty" style="margin:auto;border:0"><div class="big">🚫</div>Игрок заблокирован. Разблокировать можно в «Моей анкете».</div>';
+    loadChats();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function unblockPlayer(blockedUserId, nick) {
+  try {
+    await api('/api/unblock', { method: 'POST', body: { blocked_user_id: blockedUserId } });
+    toast('Игрок ' + esc(nick || '') + ' разблокирован ✅', 'ok');
+    loadPlayers();
+    loadBlockedList();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+async function openReportModal(type, id, name) {
+  if (!state.token) return requireLogin();
+  let reasons = { spam: 'Спам или реклама', insult: 'Оскорбления, токсичность', fake: 'Фейковая анкета / чужой ник',
+                  fraud: 'Мошенничество, обман', adult: 'Неприемлемый контент', other: 'Другое' };
+  try { const b = await api('/api/blocks'); reasons = b.reasons || reasons; } catch {}
+  openModal(`
+    <div class="modal-head"><h3>⚠️ Жалоба на ${esc(name)}</h3><button class="x-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <label class="lbl">Причина</label>
+      <select class="inp" id="repReason">
+        ${Object.entries(reasons).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}
+      </select>
+      <label class="lbl" style="margin-top:14px">Комментарий (необязательно)</label>
+      <textarea class="inp" id="repComment" placeholder="Что именно нарушает правила?"></textarea>
+      <p class="hint">Анкета со ${3} и более жалобами автоматически скрывается из поиска до проверки модератором.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="closeModal()">Отмена</button>
+      <button class="btn primary" onclick="sendReport('${type}', ${id})">Отправить жалобу</button>
+    </div>`);
+}
+
+async function sendReport(type, id) {
+  try {
+    const r = await api('/api/report', {
+      method: 'POST',
+      body: { target_type: type, target_id: id, reason: $('#repReason').value, comment: $('#repComment').value },
+    });
+    closeModal();
+    toast(esc(r.message) + (r.hidden ? '' : ''), 'ok');
+    loadPlayers();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- приглашение ---------- */
+async function openInvite(id) {
+  if (!state.token) return requireLogin();
+  const p = state.players.find(x => x.id === id) || await api('/api/players/' + id);
+  const games = p.games.map(g => g.short).join(', ');
+  const first = p.games[0] ? p.games[0].short : 'кооп';
+  const myContact = (state.me && state.me.listing && state.me.listing.contact) || '';
+  const draft = `Привет! Ищу тиммейтов в ${first} — давай сыграем вечером? Я онлайн после 19:00.`
+    + (myContact ? ` Мой контакт: ${myContact}.` : '');
+  openModal(`
+    <div class="modal-head">
+      <h3>Приглашение</h3><button class="x-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px">
+        <div class="avatar a-52" style="${avatarStyle(p.nick)}">${esc(initials(p.nick))}</div>
+        <div><div class="nick">${esc(p.nick)}</div>
+        <div class="meta"><span>${esc(games)}</span><span>${p.region_flag} ${esc(p.region_label)}</span></div>
+        ${p.contact ? `<div class="copy-tag" style="margin-top:8px">🔗 <span>${esc(p.contact)}</span>
+          <button onclick="copyText(this)" data-text="${esc(p.contact)}">копировать</button></div>` : ''}</div>
+      </div>
+      <label class="lbl">Сообщение</label>
+      <textarea class="inp" id="invText">${esc(draft)}</textarea>
+      <p class="hint">Черновик можно изменить — игрок получит его в чате.${myContact ? ' Твой контакт подставлен автоматически.' : ' Совет: добавь Discord/Telegram в анкету — он будет подставляться сам.'}</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="closeModal()">Отмена</button>
+      <button class="btn primary" onclick="sendInvite(${p.id})">Отправить и открыть чат</button>
+    </div>`);
+}
+async function sendInvite(id) {
+  const message = $('#invText').value.trim();
+  try {
+    const r = await api('/api/invite', { method: 'POST', body: { listing_id: id, message } });
+    closeModal();
+    toast('Сообщение отправлено игроку <b>' + esc(r.peer_nick) + '</b>', 'ok',
+      [{ label: 'Открыть чат', fn: () => { go('chats'); setTimeout(() => openChat(r.chat_id), 250); } }]);
+    loadChats();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- чаты ---------- */
+async function loadChats() {
+  if (!state.token) return;
+  try {
+    const data = await api('/api/chats');
+    state.chats = data.items;
+    state.chats.forEach(c => state.chatMeta.set(c.id, c));
+    const total = data.items.reduce((s, c) => s + c.unread, 0);
+    $('#unreadBadge').style.display = total ? '' : 'none';
+    $('#unreadBadge').textContent = total;
+    updateAppBadge(total);
+    $('#chatList').innerHTML = data.items.length ? data.items.map(c => `
+      <div class="chat-item ${state.activeChat === c.id ? 'active' : ''}" onclick="openChat(${c.id})">
+        <div class="avatar a-40" style="${avatarStyle(c.peer_nick)}">${esc(initials(c.peer_nick))}</div>
+        <div class="ci">
+          <b>${esc(c.peer_nick)}${c.peer_user_id ? '<span class="tag coop" title="Реальный игрок">игрок</span>' : '<span class="tag" title="Демо-анкета: отвечает автоматически">демо</span>'}${c.game ? `<span>${c.game.emoji} ${esc(c.game.short)}</span>` : ''}</b>
+          <p>${c.last_sender === 'me' ? 'Вы: ' : ''}${esc(c.last_message)}</p>
+        </div>
+        ${c.unread ? `<div class="unread">${c.unread}</div>` : `<span class="hint">${timeAgo(c.updated_at)}</span>`}
+      </div>`).join('') : '<div class="empty" style="border:0;margin:auto;padding:30px"><div class="big">📭</div>Пока нет диалогов.<br>Найди игрока во вкладке «Поиск».</div>';
+  } catch (e) {}
+}
+
+async function openChat(id) {
+  state.activeChat = id; state.lastMsgId = 0;
+  const meta = state.chatMeta.get(id) || {};
+  if (!meta.peer_nick) { await loadChats(); }
+  const m = state.chatMeta.get(id) || {};
+  $('#chatWin').innerHTML = `
+    <div class="chat-head">
+      <div class="avatar a-40" style="${avatarStyle(m.peer_nick)}">${esc(initials(m.peer_nick || '?'))}</div>
+      <div style="flex:1">
+        <div class="nick" style="font-size:15px">${esc(m.peer_nick || 'Игрок')}</div>
+        <div class="hint">${m.game ? m.game.emoji + ' ' + esc(m.game.short) : 'Диалог'}</div>
+      </div>
+      ${m.listing_id ? `<button class="btn sm ghost" onclick="openProfile(${m.listing_id})">Профиль</button>` : ''}
+      ${(state.chatMeta.get(id) || {}).peer_user_id
+        ? `<button class="btn sm ghost" title="Заблокировать" onclick="blockChatUser(${id})">🚫</button>`
+        : `<span class="hint">демо-игрок</span>`}
+    </div>
+    <div class="msgs" id="msgs"></div>
+    <div class="composer">
+      <input id="msgInput" placeholder="Написать сообщение…" onkeydown="if(event.key==='Enter')sendMessage()">
+      <button class="btn primary" onclick="sendMessage()"><span class="send-label">Отправить&nbsp;</span>➤</button>
+    </div>`;
+  await api('/api/chats/' + id + '/read', { method: 'POST' });
+  await fetchMessages(true);
+  loadChats();
+  startPolling();
+  $('#msgInput').focus();
+}
+
+async function fetchMessages(scroll = false) {
+  const id = state.activeChat; if (!id) return;
+  const data = await api('/api/chats/' + id + '/messages?after=' + state.lastMsgId);
+  if (!data.items.length) return;
+  const box = $('#msgs'); if (!box) return;
+  $$('.typing', box).forEach(t => t.remove());
+  data.items.forEach(m => {
+    state.lastMsgId = Math.max(state.lastMsgId, m.id);
+    const div = document.createElement('div');
+    div.className = 'bubble ' + (m.sender === 'me' ? 'me' : 'peer');
+    div.innerHTML = `${esc(m.text)}<time>${clock(m.created_at)}</time>`;
+    box.appendChild(div);
+  });
+  scrollBottom(box);
+  if (scroll) setTimeout(() => scrollBottom(box), 60);
+  const total = state.chats.reduce((s, c) => s + c.unread, 0);
+  $('#unreadBadge').style.display = total ? '' : 'none';
+  $('#unreadBadge').textContent = total;
+}
+
+async function sendMessage() {
+  const input = $('#msgInput'); const text = input.value.trim();
+  if (!text || !state.activeChat) return;
+  input.value = '';
+  const url = '/api/chats/' + state.activeChat + '/messages';
+  try {
+    await api(url, { method: 'POST', body: { text } });
+  } catch (e) {
+    // нет сети — кладём в очередь и отправим автоматически
+    state.outbox.push({ url, body: { text }, at: Date.now() });
+    saveOutbox();
+    const awaitSync = swRegistration().then(reg => reg && reg.sync ? reg.sync.register('squadup-outbox').catch(() => {}) : null);
+    toast('Нет сети — сообщение отправится, как только появится связь 📶');
+    input.value = text;
+    await awaitSync;
+    return;
+  }
+  await fetchMessages();
+  const id = state.activeChat;
+  const meta = state.chatMeta.get(id) || {};
+  loadChats();
+  if (meta.peer_user_id) return;   // живой собеседник ответит сам — ждём его (опрос раз в 4 с)
+  // демо-собеседник: показываем «печатает…» и просим сервер сгенерировать ответ
+  const box = $('#msgs');
+  if (!box) return;
+  const typing = document.createElement('div');
+  typing.className = 'typing'; typing.innerHTML = '<i></i><i></i><i></i>';
+  box.appendChild(typing); scrollBottom(box);
+  setTimeout(async () => {
+    typing.remove();
+    await api('/api/chats/' + id + '/simulate-reply', { method: 'POST' }).catch(() => {});
+    if (state.activeChat === id) { await fetchMessages(); api('/api/chats/' + id + '/read', { method: 'POST' }).catch(() => {}); }
+    loadChats();
+  }, 1600 + Math.random() * 1600);
+}
+
+function startPolling() {
+  stopPolling();
+  state.pollTimer = setInterval(async () => {
+    if (!state.activeChat) return;
+    await fetchMessages().catch(() => {});
+  }, 4000);
+}
+function stopPolling() { if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; } }
+
+/* ---------- сквады ---------- */
+async function loadSquads() {
+  $('#squads').innerHTML = '<div class="spin"></div>';
+  const p = new URLSearchParams();
+  if ($('#sgame').value) p.set('game', $('#sgame').value);
+  if ($('#sregion').value) p.set('region', $('#sregion').value);
+  try {
+    const data = await api('/api/squads?' + p.toString());
+    state.squads = data.items;
+    if (!data.items.length) {
+      $('#squads').innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="big">🛡️</div>Сквадов по таким фильтрам нет — создай свой!</div>';
+      return;
+    }
+    $('#squads').innerHTML = data.items.map(s => `
+      <article class="squad">
+        <div class="squad-top">
+          <div class="emblem">${s.game_emoji}</div>
+          <div style="flex:1;min-width:0">
+            <h3>${esc(s.name)} <span class="tag-chip">${esc(s.tag)}</span></h3>
+            <div class="meta"><span>${esc(s.game_name)}</span><span>${s.mode_label}</span><span>${s.region_flag} ${esc(s.region_label)}</span></div>
+          </div>
+        </div>
+        <div class="topic">
+          ${s.is_mine ? '<span class="tag you">Ваш сквад</span>' : ''}
+          <span class="tag ${s.mode}">${s.mode_label}</span>
+          <span class="tag">${s.mic ? '🎤 микрофон обяз.' : '🔇 микро не нужен'}</span>
+          <span class="tag">🗣 ${esc(s.language)}</span>
+          <span class="tag">🎖 от ${esc(s.min_rank)}</span>
+        </div>
+        <div>
+          <div class="hint" style="margin-bottom:6px">Состав ${s.filled}/${s.size} · нужно ещё ${s.size - s.filled}</div>
+          <div class="slots">${Array.from({ length: s.size }, (_, i) => `<div class="slot ${i >= s.filled ? 'free' : ''}"></div>`).join('')}</div>
+        </div>
+        <dl class="kv">
+          <dt>Ищем роли</dt><dd>${s.need.length ? esc(s.need.join(', ')) : 'любые'}</dd>
+          <dt>Расписание</dt><dd>${esc(s.schedule)}</dd>
+          <dt>Капитан</dt><dd>${esc(s.captain)}</dd>
+        </dl>
+        <p class="about">${esc(s.about)}</p>
+        <div class="card-foot">
+          <div class="hint">Создан ${timeAgo(s.created_at)}</div>
+          <div class="actions">
+            ${s.is_mine
+              ? '<span class="tag you">набор открыт</span>'
+              : s.applied
+                ? '<button class="btn sm" disabled>Заявка отправлена ✓</button>'
+                : `<button class="btn sm primary" onclick="applySquad(${s.id})">Подать заявку</button>`}
+          </div>
+        </div>
+      </article>`).join('');
+  } catch (e) { $('#squads').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+async function applySquad(id) {
+  if (!state.token) return requireLogin();
+  const squad = (state.squads || []).find(s => s.id === id);
+  const name = squad ? squad.name : 'сквад';
+  try {
+    const r = await api('/api/squads/' + id + '/apply', { method: 'POST', body: {} });
+    toast(r.already ? 'Ты уже отправлял заявку в «' + esc(name) + '»' : 'Заявка в «' + esc(name) + '» отправлена ✅', 'ok');
+    loadSquads();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+function openSquadForm() {
+  if (!state.token) return requireLogin();
+  const gameOpts = state.meta.games.map(g => `<option value="${g.id}">${g.emoji} ${esc(g.name)}</option>`).join('');
+  const regionOpts = state.meta.regions.map(r => `<option value="${r.id}">${r.flag} ${esc(r.label)}</option>`).join('');
+  openModal(`
+    <div class="modal-head"><h3>Создать сквад</h3><button class="x-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div><label class="lbl">Название</label><input class="inp" id="sqName" placeholder="Например: Night Wolves"></div>
+        <div><label class="lbl">Тег</label><input class="inp" id="sqTag" placeholder="NWLV" maxlength="5"></div>
+        <div><label class="lbl">Игра</label><select class="inp" id="sqGame">${gameOpts}</select></div>
+        <div><label class="lbl">Размер состава</label><input class="inp" id="sqSize" type="number" min="2" max="10" value="5"></div>
+        <div><label class="lbl">Регион</label><select class="inp" id="sqRegion">${regionOpts}</select></div>
+        <div><label class="lbl">Язык</label><input class="inp" id="sqLang" value="Русский"></div>
+        <div><label class="lbl">Минимальный ранг</label><input class="inp" id="sqRank" placeholder="Например: Gold"></div>
+        <div><label class="lbl">Расписание</label><input class="inp" id="sqSched" value="Вечер 18–24, выходные"></div>
+      </div>
+      <div style="margin-top:14px"><label class="lbl">Какие роли нужны (через запятую)</label>
+        <input class="inp" id="sqNeed" placeholder="IGL, Саппорт, Снайпер"></div>
+      <div style="margin-top:14px"><label class="lbl">Описание</label>
+        <textarea class="inp" id="sqAbout" placeholder="Цели, атмосфера, требования к игрокам…"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" onclick="closeModal()">Отмена</button>
+      <button class="btn primary" onclick="createSquad()">Создать сквад</button>
+    </div>`);
+}
+
+async function createSquad() {
+  const body = {
+    name: $('#sqName').value.trim(),
+    tag: $('#sqTag').value.trim(),
+    game_id: $('#sqGame').value,
+    size: $('#sqSize').value,
+    region: $('#sqRegion').value,
+    language: $('#sqLang').value,
+    min_rank: $('#sqRank').value,
+    schedule: $('#sqSched').value,
+    need: $('#sqNeed').value.split(',').map(s => s.trim()).filter(Boolean),
+    about: $('#sqAbout').value,
+    mic: 1,
+  };
+  try {
+    await api('/api/squads', { method: 'POST', body });
+    closeModal();
+    toast('Сквад создан! Игроки увидят его в разделе «Сквады».', 'ok');
+    loadSquads();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- моя анкета ---------- */
+function addGameRow(preset = null) {
+  const rows = $$('#gameRows .game-row');
+  if (rows.length >= 4) { toast('Максимум 4 игры в анкете', 'err'); return; }
+  const gameOpts = state.meta.games.map(g => `<option value="${g.id}" ${preset && preset.game_id === g.id ? 'selected' : ''}>${g.emoji} ${esc(g.name)}</option>`).join('');
+  const row = document.createElement('div');
+  row.className = 'game-row';
+  row.innerHTML = `
+    <select class="inp g-sel">${gameOpts}</select>
+    <select class="inp g-rank"></select>
+    <select class="inp g-role"></select>
+    <button class="btn sm ghost" onclick="this.parentElement.remove()">✕ Удалить</button>`;
+  $('#gameRows').appendChild(row);
+  const sync = () => {
+    const g = state.meta.games.find(x => x.id === row.querySelector('.g-sel').value);
+    row.querySelector('.g-rank').innerHTML = g.ranks.map(r => `<option ${preset && preset.rank === r ? 'selected' : ''}>${esc(r)}</option>`).join('');
+    row.querySelector('.g-role').innerHTML = g.roles.map(r => `<option ${preset && preset.role === r ? 'selected' : ''}>${esc(r)}</option>`).join('');
+  };
+  row.querySelector('.g-sel').onchange = sync;
+  sync();
+}
+
+function fillListingForm(l) {
+  $('#pNick').value = l?.nick || state.me?.nickname || '';
+  $('#pAge').value = l?.age || 18;
+  $('#pRegion').value = l?.region || 'eu';
+  $('#pSkill').value = l?.skill || 3;
+  $('#pVibe').value = l?.vibe || 'chill';
+  $('#pAbout').value = l?.about || '';
+  $('#pContact').value = l?.contact || '';
+  $('#gameRows').innerHTML = '';
+  if (l?.games?.length) l.games.forEach(g => addGameRow(g)); else addGameRow();
+  const setChip = (sel, attr, values) => $$(sel + ' .chip').forEach(c => {
+    const on = values.includes(c.dataset[attr]);
+    c.dataset.on = on ? '1' : '0'; c.classList.toggle('on', on);
+  });
+  setChip('#pPlatforms', 'plat', l?.platforms || ['pc']);
+  setChip('#pLangs', 'lang', l?.languages || ['Русский']);
+  setChip('#pSchedule', 'sched', l?.schedule || ['Вечер 18–24']);
+  $('#pMic').dataset.on = (l ? l.mic : 1) ? '1' : '0';
+  $('#pMic').classList.toggle('on', $('#pMic').dataset.on === '1');
+}
+
+async function saveListing() {
+  const games = $$('#gameRows .game-row').map(r => ({
+    game_id: r.querySelector('.g-sel').value,
+    rank: r.querySelector('.g-rank').value,
+    role: r.querySelector('.g-role').value,
+    hours: 100,
+  }));
+  const body = {
+    nick: $('#pNick').value.trim(),
+    age: +$('#pAge').value || 18,
+    region: $('#pRegion').value,
+    skill: +$('#pSkill').value,
+    vibe: $('#pVibe').value,
+    about: $('#pAbout').value.trim(),
+    games,
+    platforms: chipsVal('#pPlatforms', 'plat'),
+    languages: chipsVal('#pLangs', 'lang'),
+    schedule: chipsVal('#pSchedule', 'sched'),
+    mic: $('#pMic').dataset.on === '1' ? 1 : 0,
+  };
+  if (!body.games.length) { toast('Добавь хотя бы одну игру', 'err'); return; }
+  try {
+    await api('/api/listing', { method: 'PUT', body });
+    toast('Анкета сохранена — она уже видна в поиске ✅', 'ok');
+    await bootstrapUser();
+    loadStats();
+    loadPlayers();
+    loadLooking();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- инициализация ---------- */
+async function bootstrapUser() {
+  if (!state.token) { $('#userChip').style.display = 'none'; return; }
+  try {
+    state.me = await api('/api/me');
+  } catch (e) {
+    state.token = null; localStorage.removeItem('squadup_token');
+    $('#userChip').style.display = 'none';
+    requireLogin();
+    return;
+  }
+  $('#userChip').style.display = '';
+  $('#meNick').textContent = state.me.nickname;
+  $('#meAvatar').style.cssText = avatarStyle(state.me.nickname);
+  $('#meAvatar').textContent = initials(state.me.nickname);
+  $('#meStatus').textContent = state.me.discord && state.me.discord.linked ? '● Discord' : 'онлайн';
+  renderAccounts();
+  $('#unreadBadge').style.display = state.me.unread ? '' : 'none';
+  $('#unreadBadge').textContent = state.me.unread || 0;
+  fillListingForm(state.me.listing);
+  $('#myListingState').innerHTML = state.me.listing
+    ? '<span class="tag coop">Анкета опубликована</span>'
+    : '<span class="tag pvp">Ещё не опубликована</span>';
+  if (state.meta) loadLooking();
+  loadBlockedList();
+}
+
+async function init() {
+  // 1) параметры после Discord-редиректов и ярлыков PWA
+  const url = new URL(location.href);
+  const urlToken = url.searchParams.get('token');
+  const discordErr = url.searchParams.get('discord_error');
+  const discordLinked = url.searchParams.get('discord_linked');
+  const discordWelcome = url.searchParams.get('discord_welcome');
+  const startView = url.searchParams.get('view');
+  if (urlToken) { state.token = urlToken; localStorage.setItem('squadup_token', urlToken); }
+  if (urlToken || discordErr || discordLinked || discordWelcome || startView) {
+    history.replaceState(null, '', '/');
+  }
+
+  // 2) настройки сервера и каталог
+  try { state.cfg = await api('/api/config'); } catch (e) {}
+  try { await loadMeta(); } catch (e) { toast('Не удалось загрузить каталог игр: ' + esc(e.message), 'err'); }
+  bindFilters();
+  bindChips('#pPlatforms', 'plat'); // на случай повторной привязки
+  $('#pMic').onclick = () => {
+    const el = $('#pMic'); el.dataset.on = el.dataset.on === '1' ? '0' : '1';
+    el.classList.toggle('on', el.dataset.on === '1');
+  };
+  $('#sgame').onchange = loadSquads;
+  $('#sregion').onchange = loadSquads;
+  await bootstrapUser();
+  loadStats();
+  loadPlayers();
+  loadLooking();
+  $('#lfgToggle').onclick = toggleLooking;
+  setInterval(() => {
+    if ($('#view-search').classList.contains('active')) { loadLooking(); loadStats(); }
+  }, 45000);
+
+  // 3) сообщения о результате OAuth и ярлыки PWA
+  if (discordLinked) toast('Discord привязан к анкете ✅', 'ok');
+  if (urlToken && discordWelcome) toast('Вход через Discord выполнен ✅ Демо-анкеты уже ждут.', 'ok');
+  if (discordErr) toast('Не удалось войти через Discord (' + esc(discordErr) + ')', 'err');
+  if (startView && ['search', 'squads', 'chats', 'profile'].includes(startView)) go(startView);
+
+  // 4) офлайн-оболочка, уведомления и фоновая работа
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      sendTokenToSW();
+      loadOutbox();
+      flushOutbox();
+      // «периодическая синхронизация» доступна в установленном приложении (Chrome)
+      try { await reg.periodicSync.register('squadup-unread', { minInterval: 3 * 60 * 60 * 1000 }); } catch {}
+      // если разрешение уже выдано, а подписки нет — восстановим её тихо
+      if (pushSupported() && Notification.permission === 'granted' && state.token) {
+        const st = await api('/api/push/state').catch(() => null);
+        if (st && st.available && !st.subscribed && st.public_key) {
+          const sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlB64ToUint8Array(st.public_key),
+          }).catch(() => null);
+          if (sub) {
+            const payload = sub.toJSON();
+            await api('/api/push/subscribe', { method: 'POST',
+              body: { endpoint: payload.endpoint, keys: payload.keys } }).catch(() => {});
+          }
+        }
+      }
+      await loadPushState();
+    } catch (e) { /* офлайн-режим не критичен для работы */ }
+  }
+
+  if (!state.token) requireLogin();
+}
+init();
+</script>
+</body>
+</html>
