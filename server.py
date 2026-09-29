@@ -1817,7 +1817,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, dict(discord_enabled=DISCORD_ENABLED,
                                         steam_enabled=True,
                                         push_enabled=PUSH_ENABLED,
-                                        app_name="SQUADUP", version="1.11"))
+                                        app_name="SQUADUP", version="1.11.1"))
 
         if path == "/api/games" and method == "GET":
             return self._send(200, dict(
@@ -3321,9 +3321,25 @@ class Handler(BaseHTTPRequestHandler):
                                     "ORDER BY id DESC LIMIT 1", (g["id"],)).fetchone()
                 last_text = ""
                 if last:
-                    last_text = (last["text"] or "") or ("Опрос" if last["kind"] == "poll" else
-                                                         "Приглашение" if last["kind"] == "invite" else
-                                                         "Поиск игроков" if last["kind"] == "lfg" else "")
+                    last_text = (last["text"] or "")
+                    if not last_text:
+                        if last["kind"] == "poll":
+                            try:
+                                last_text = "Опрос: " + (json.loads(last["meta"] or "{}").get("question") or "")
+                            except Exception:
+                                last_text = "Опрос"
+                        elif last["kind"] == "media":
+                            try:
+                                atts = json.loads(last["meta"] or "{}").get("attachments") or []
+                                att = atts[0] if atts else {}
+                                last_text = ("Скриншот: " if att.get("is_image") else
+                                             "Клип: " if att.get("is_video") else "Файл: ") + str(att.get("name") or "")
+                            except Exception:
+                                last_text = "Файл"
+                        elif last["kind"] == "invite":
+                            last_text = "Приглашение в игру"
+                        elif last["kind"] == "lfg":
+                            last_text = "Поиск игроков"
                 members = conn.execute("SELECT COUNT(*) AS c FROM group_members WHERE chat_id = ?",
                                        (g["id"],)).fetchone()["c"]
                 muted = conn.execute("SELECT muted_until FROM group_members WHERE chat_id = ? AND user_id = ?",

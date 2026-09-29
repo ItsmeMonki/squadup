@@ -383,7 +383,8 @@
  background:linear-gradient(135deg,var(--acc-3),var(--acc));color:#fff;font-size:11px;font-weight:800;
  border-radius:99px;min-width:20px;padding:1px 6px;text-align:center
  }
- .chat-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center}
+ .chat-head-main{flex:1 1 240px;min-width:200px}
+.chat-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center}
  .msgs{flex:1;overflow-y:auto;padding:14px 0 10px;display:flex;flex-direction:column}
  .typing{align-self:flex-start;display:flex;gap:4px;padding:12px 16px;background:var(--panel-2);
  border:1px solid var(--border);border-radius:16px;margin-left:18px}
@@ -698,7 +699,8 @@
   .chat-head-actions{width:100%}
   .chat-head{padding:8px 10px;gap:6px;flex-wrap:nowrap}
   .chat-head .nick{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .chat-head .desk-only{display:none}
+  .chat-head .desk-only,.desk-only{display:none}
+  .chat-head-main{min-width:0}
   .chat-head .btn{padding:8px 10px}
   .gc-head .gc-line{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .chat-head .av-wrap-sm .avatar,.chat-head .gc-av.big{width:34px;height:34px;font-size:15px}
@@ -1052,7 +1054,7 @@ textarea.inp,.composer textarea,.aside-body textarea{border-radius:20px}
  <div class="section-head">
  <div>
  <h2 class="page-title">Чаты</h2>
- <div class="page-sub">Личные диалоги, группы и пати. Ответ приходит за секунды — даже если приложение закрыто, придёт уведомление.</div>
+ <div class="page-sub desk-only">Личные диалоги, группы и пати. Ответ приходит за секунды — даже если приложение закрыто, придёт уведомление.</div>
  </div>
  <div class="chat-head-actions tools-row">
  <button class="btn sm ghost" onclick="openGlobalSearch()">Поиск</button>
@@ -2174,7 +2176,7 @@ async function loadBlockedList() {
  box.innerHTML = d.items.map(b => `
  <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)">
  <div class="avatar a-40" style="${avatarStyle(b.nick)}">${esc(initials(b.nick))}</div>
- <div style="flex:1 1 240px;min-width:220px"><b>${esc(b.nick)}</b>
+ <div class="chat-head-main"><b>${esc(b.nick)}</b>
  <div class="hint">заблокирован ${timeAgo(b.created_at)}</div></div>
  <button class="btn sm ghost" onclick="unblockPlayer('${b.blocked_user_id}','${esc(b.nick)}')">Разблокировать</button>
  </div>`).join('');
@@ -3006,7 +3008,7 @@ function dmHeadHtml(c) {
   return `<div class="chat-head">
     <button class="btn sm ghost back-to-chats" onclick="closeChatWindow()" title="К списку диалогов">Назад</button>
     <div id="chatPeerAv">${avatarWithStatus(c.title || 'Игрок', c.avatar, c.presence !== 'offline', null)}</div>
-    <div style="flex:1 1 240px;min-width:220px">
+    <div class="chat-head-main">
       <div class="nick" style="font-size:15px">${esc(c.title || 'Игрок')}</div>
       <div class="hint" id="chatPeerState">${esc(c.presence_label || '')}</div>
     </div>
@@ -3029,7 +3031,7 @@ function groupHeadHtml(c) {
   return `<div class="chat-head gc-head">
     <button class="btn sm ghost back-to-chats" onclick="closeChatWindow()" title="К списку диалогов">Назад</button>
     <div class="gc-av big">${c.type === 'party' ? 'П' : 'Г'}</div>
-    <div style="flex:1 1 240px;min-width:220px">
+    <div class="chat-head-main">
       <div class="nick" style="font-size:15px">${esc(c.title || 'Пати')}</div>
       <div class="gc-line" id="gcLine">${parts.filter(Boolean).map(p => esc(p)).join(' · ')}</div>
     </div>
@@ -4083,7 +4085,7 @@ async function openUserCard(nick, ev) {
   box.innerHTML = `
     <div class="uc-top">
       ${avatarHtml(c.nick, c.avatar, 'avatar')}
-      <div style="flex:1 1 240px;min-width:220px">
+      <div class="chat-head-main">
         <b>${esc(c.nick)}</b>
         <span>${esc(c.label || '')}${c.listing_id ? '' : ' · без анкеты'}</span>
       </div>
@@ -4457,7 +4459,7 @@ async function loadSquads() {
  <article class="squad">
  <div class="squad-top">
  <div class="gchip lg">${esc(gameShort(s.game_id))}</div>
- <div style="flex:1 1 240px;min-width:220px">
+ <div class="chat-head-main">
  <h3>${esc(s.name)} <span class="tag-chip">${esc(s.tag)}</span></h3>
  <div class="meta"><span>${esc(s.game_name)}</span><span>${s.mode_label}</span><span>${esc(s.region_label)}</span></div>
  </div>
