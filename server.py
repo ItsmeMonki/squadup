@@ -1817,7 +1817,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, dict(discord_enabled=DISCORD_ENABLED,
                                         steam_enabled=True,
                                         push_enabled=PUSH_ENABLED,
-                                        app_name="SQUADUP", version="1.10"))
+                                        app_name="SQUADUP", version="1.11"))
 
         if path == "/api/games" and method == "GET":
             return self._send(200, dict(

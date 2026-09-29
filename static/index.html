@@ -607,7 +607,8 @@
 .aside-tabs{display:flex;gap:4px;padding:10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--panel);z-index:2;flex-wrap:wrap}
 .aside-tabs button{background:transparent;border:1px solid transparent;color:var(--muted);font-size:12.5px;padding:6px 9px;border-radius:9px;cursor:pointer}
 .aside-tabs button.on{background:var(--acc-soft);color:var(--acc-2);border-color:var(--acc-line)}
-.aside-body{padding:12px;display:flex;flex-direction:column;gap:10px}
+.aside-body{padding:12px;display:flex;flex-direction:column;gap:10px;align-content:start}
+.aside-body>*{flex:0 0 auto}
 .aside-item{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:9px 11px;cursor:pointer;display:flex;flex-direction:column;gap:3px}
 .aside-item b{font-size:12.5px;color:var(--acc-2)}
 .aside-item span{font-size:13px;color:var(--text);word-break:break-word}
@@ -671,6 +672,11 @@
 .pin-mark{font-size:11.5px;color:#ffd7a8;margin-left:8px}
 .msg-row.pinned .msg-main{border-left:2px solid rgba(255,138,61,.5);padding-left:10px}
 .quick-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 8px}
+@media (min-width:1181px){
+  .quick-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;white-space:nowrap;padding:0 14px 6px}
+  .quick-chips::-webkit-scrollbar{display:none}
+  .quick-chips .chip{flex:0 0 auto}
+}
 .quick-chips .chip{font-size:12.5px;padding:5px 10px}
 .plus-btn{min-width:38px;height:40px;font-size:18px;line-height:1}
 .plus-menu{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:6px;flex-direction:column;box-shadow:0 14px 34px rgba(0,0,0,.5)}
@@ -705,6 +711,217 @@
   .composer textarea{min-height:42px;padding:10px 12px;font-size:16px}
   .plus-btn{min-width:34px;height:42px}
   .ready-row{padding:8px 10px}
+}
+
+/* нижняя навигация на телефоне: четыре раздела, крупные зоны нажатия */
+#tabbar{display:none}
+#tabbar .dot{background:var(--acc);color:#1b0e05}
+@media (max-width:760px){
+  #nav{display:none}
+  #tabbar{display:flex;position:fixed;left:10px;right:10px;bottom:10px;z-index:60;
+    background:rgba(16,17,19,.94);backdrop-filter:blur(18px);border:1px solid var(--border);
+    border-radius:26px;padding:8px 6px;gap:4px;box-shadow:0 18px 40px rgba(0,0,0,.6)}
+  #tabbar button{position:relative;flex:1;background:transparent;border:0;color:var(--muted-2);
+    display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10px;letter-spacing:.1em;
+    text-transform:uppercase;padding:6px 2px;border-radius:18px;font-family:inherit}
+  #tabbar button::before{content:"";width:20px;height:20px;border:1.6px solid currentColor;
+    border-radius:7px;opacity:.9}
+  #tabbar button[data-go="search"]::before{border-radius:50%}
+  #tabbar button[data-go="squads"]::before{border-radius:5px}
+  #tabbar button[data-go="profile"]::before{border-radius:50% 50% 44% 44%}
+  #tabbar button.on{color:var(--text)}
+  #tabbar button.on::before{color:var(--acc);border-color:var(--acc);box-shadow:0 0 14px rgba(255,138,61,.55)}
+  #tabbar .dot{position:absolute;top:2px;right:14px}
+  body{padding-bottom:84px}
+  .head-in{padding:9px 12px;gap:10px}
+  .logo{gap:9px}
+  .logo-txt b{font-size:15px;letter-spacing:.2em}
+  .logo-txt span{display:none}
+  .user-chip{padding:5px 10px 5px 5px}
+  .user-chip .who b{font-size:12.5px}
+  .user-chip .who span{display:none}
+  .tools-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+  .tools-row::-webkit-scrollbar{display:none}
+  .tools-row .btn{flex:0 0 auto}
+}
+.ci-tags{font-size:10px;letter-spacing:.16em;color:var(--muted-2);margin-top:5px}
+.ci-time{color:var(--muted-2);font-size:10.5px;letter-spacing:.08em;font-weight:400;flex:none}
+
+/* ======================= 1.11: визуальный язык UMO =======================
+   Глубокий чёрный, поверхности на пару ступеней светлее, тихие подписи капсом,
+   крупные тонкие цифры, один неоновый акцент на активном. */
+:root{
+ --bg:#08080a;
+ --panel:#0f1012;
+ --panel-2:#16181b;
+ --card:#141517;
+ --border:rgba(255,255,255,.06);
+ --border-strong:rgba(255,255,255,.13);
+ --text:#f4f5f7;
+ --muted:#8b9099;
+ --muted-2:#5a606a;
+ --acc:#ff8a3d;
+ --acc-2:#ffb27a;
+ --acc-line:rgba(255,138,61,.34);
+ --acc-soft:rgba(255,138,61,.10);
+ --radius:22px;
+ --shadow:0 24px 60px rgba(0,0,0,.55);
+}
+.bg-fx{background:radial-gradient(1100px 620px at 50% -14%, #14161c 0%, #0a0b0d 55%, #060607 100%)}
+.bg-fx::after{display:none}
+body{font-weight:300}
+h1,h2,h3{font-weight:300}
+.logo-txt b{letter-spacing:.26em;font-weight:500}
+.logo-txt span{letter-spacing:.2em;color:var(--muted-2)}
+
+/* тихие подписи капсом */
+.lbl{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted-2)}
+.chat-group-title{font-size:10px;letter-spacing:.22em;color:var(--muted-2);font-weight:400}
+.ci-top{font-size:10px;letter-spacing:.22em;color:var(--acc-2)}
+.msg-head b{font-size:10px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-2)}
+.msg-head time,.msg-head .edited{font-size:10px;letter-spacing:.08em;color:var(--muted-2)}
+.day-sep{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted-2)}
+.pu-scope,.stat small,.gc-head .gc-line{letter-spacing:.1em}
+
+/* крупные тонкие цифры */
+.stat{font-size:36px;font-weight:200;letter-spacing:-.03em;line-height:1.05}
+.stat small{font-size:13px;color:var(--muted-2);font-weight:300}
+.gc-av{border-radius:32%;background:var(--card);border-color:var(--border);color:var(--text);font-weight:500}
+
+/* кнопки-капсулы */
+.btn{border-radius:999px;font-weight:500;background:var(--panel-2);border-color:var(--border)}
+.btn:hover{background:#1d2024}
+.btn.primary{background:linear-gradient(180deg,#ff9a4d,#ee7026);color:#fff;
+ box-shadow:0 10px 26px rgba(255,138,61,.30);border-color:transparent}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent;border-color:var(--border)}
+.btn.danger{color:#ff9a86}
+.chip{border-radius:999px;font-weight:400;background:var(--card);border-color:var(--border)}
+.chip.on{background:var(--acc-soft);border-color:var(--acc-line);color:var(--acc-2)}
+
+/* аватары — квадраты со скруглением, спокойные тона */
+.avatar{border-radius:32%;font-weight:500;letter-spacing:0}
+.msg-row .mv img,.msg-row .mv .avatar{border-radius:32%}
+.av-wrap-sm .avatar{border-radius:32%}
+.av-wrap-sm .dot-status{border-color:var(--bg)}
+#meAvatar{background:linear-gradient(180deg,#ff9a4d,#ee7026)!important;color:#200f04!important;border:0}
+
+/* шапка и навигация: геометрия вместо картинок */
+.nav-btn{border-radius:999px;background:transparent;color:var(--muted-2);font-weight:400;
+ font-size:13.5px;gap:9px;padding:9px 15px 9px 13px}
+.nav-btn:hover{background:var(--card);color:var(--text)}
+.nav-btn.active{background:var(--card);border-color:var(--border);color:var(--text)}
+.nav-btn::before{content:"";width:14px;height:14px;flex:0 0 auto;border:1.6px solid currentColor;
+ border-radius:5px;opacity:.85}
+.nav-btn[data-go="search"]::before{border-radius:50%}
+.nav-btn[data-go="squads"]::before{border-radius:4px}
+.nav-btn[data-go="profile"]::before{border-radius:50% 50% 44% 44%}
+.nav-btn.active::before{color:var(--acc);border-color:var(--acc);box-shadow:0 0 14px rgba(255,138,61,.55)}
+
+/* список разговоров */
+.chat-list{background:transparent;border:0}
+.chat-group-title{padding:14px 14px 8px}
+.chat-item{border:1px solid transparent;border-radius:20px;margin:2px 8px;padding:11px 12px}
+.chat-item:hover{background:var(--card)}
+.chat-item.active{background:var(--card);border-color:var(--border);
+ background-image:linear-gradient(90deg,rgba(255,138,61,.10),transparent)}
+.chat-item .ci b{font-size:14.5px;font-weight:400}
+.chat-item .ci b span{font-weight:400;font-size:10.5px;letter-spacing:.08em;color:var(--muted-2)}
+.chat-item .ci p{font-size:12.5px}
+.unread{background:var(--acc);color:#1b0e05;font-weight:500;box-shadow:0 6px 16px rgba(255,138,61,.35)}
+.av-wrap-sm,.av-wrap-sm .avatar{width:46px;height:46px}
+.av-wrap-sm .avatar{font-size:15px}
+
+/* чат: сообщение — спокойная карточка, а не «пузырь» */
+.chat-win,.chat-list{border-radius:24px}
+.msgs{padding:18px 0 10px}
+.msg-row{padding:3px 16px;border-radius:0}
+.msg-row:hover{background:transparent}
+.msg-main{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:11px 14px}
+.msg-row.me .msg-main{background:linear-gradient(180deg,rgba(255,138,61,.10),rgba(255,138,61,.03));
+ border-color:rgba(255,138,61,.22)}
+.msg-text{color:#e9ebef;font-size:14px}
+.msg-quote{background:rgba(255,255,255,.04);border-radius:12px;border-left-width:2px}
+.msg-tools{top:6px;right:16px;border-radius:999px;background:var(--panel-2)}
+.typing{border-radius:18px;background:var(--card)}
+.sys-row span{background:transparent;border:0;color:var(--muted-2);font-size:12px;letter-spacing:.04em}
+.record,.read-line,.msg-meta{color:var(--muted-2);letter-spacing:.04em}
+
+/* приборная карточка пати */
+.ready-block{border-top:1px solid var(--border);background:transparent}
+.panel-umo{margin:12px 16px 0;background:linear-gradient(180deg,#16181b,#111214);border:1px solid var(--border);
+ border-radius:24px;padding:16px 18px}
+@media (min-width:1181px){
+  .panel-umo{display:flex;flex-wrap:wrap;align-items:center;gap:12px 22px;padding:14px 18px;margin:12px 16px 0}
+  .pu-top{flex:0 1 auto;gap:16px}
+  .pu-right{min-width:150px}
+  .pu-chips{margin-top:0}
+  .pu-actions{margin-top:0;margin-left:auto}
+}
+.pu-top{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+.pu-right{flex:1;min-width:190px}
+.pbar{position:relative;height:3px;border-radius:3px;background:rgba(255,255,255,.09)}
+.pbar em{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--acc);
+ box-shadow:0 0 12px rgba(255,138,61,.55)}
+.pbar i{position:absolute;top:-3px;width:9px;height:9px;border-radius:50%;background:#fff;
+ box-shadow:0 0 12px rgba(255,255,255,.6)}
+.pu-scope{display:flex;justify-content:space-between;font-size:10.5px;text-transform:uppercase;
+ color:var(--muted-2);margin-top:9px}
+.pu-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+.pu-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.ready-chip{border-radius:999px;font-size:11px;letter-spacing:.04em;border-color:var(--border);
+ color:var(--muted);background:transparent}
+.ready-chip.ready-on{color:var(--acc-2);border-color:var(--acc-line);background:var(--acc-soft)}
+.ready-chip.ready-off{color:var(--muted-2);border-color:var(--border)}
+
+/* карточки поиска игроков, приглашений и опросов */
+.card-lfg,.card-invite,.card-poll{border-radius:22px;background:linear-gradient(180deg,#16181b,#111214);
+ border-color:var(--border);max-width:440px}
+.card-poll{background:linear-gradient(180deg,#16181b,#111214);border-color:var(--border)}
+.cp-q{font-weight:400;font-size:15px;letter-spacing:-.01em}
+.poll-opt{background:transparent;border:0;border-radius:0;padding:6px 0;margin:0;display:block;width:100%}
+.poll-opt .po-line{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:7px}
+.poll-opt .po-text{font-size:13.5px;position:static}
+.poll-opt .po-count{font-size:12px;color:var(--muted-2);position:static}
+.poll-opt .po-bar{position:static;display:block;height:3px;border-radius:3px;background:rgba(255,255,255,.09)}
+.poll-opt .po-bar b{display:block;height:3px;border-radius:3px;background:var(--acc);
+ box-shadow:0 0 12px rgba(255,138,61,.5)}
+.poll-opt.mine .po-text{color:var(--acc-2)}
+.cl-rows span,.ci-rows span,.bc-rows span{background:transparent;border-color:var(--border);color:var(--muted);
+ font-size:10.5px;letter-spacing:.08em;border-radius:999px;text-transform:uppercase;padding:3px 9px}
+.rx-chip{border-radius:999px;background:transparent}
+.rx-chip.mine{background:var(--acc-soft)}
+
+/* вкладки, поиск, поля */
+.seg{background:var(--card);border-color:transparent;border-radius:999px;padding:4px}
+.seg button{border-radius:999px;font-weight:400;font-size:13px}
+.seg button.on{background:#22252a;box-shadow:none;color:var(--text)}
+.inp,.chat-search input,textarea{background:#141517;border-color:transparent}
+.inp{border-radius:999px;padding:11px 16px}
+textarea.inp,.composer textarea,.aside-body textarea{border-radius:20px}
+.composer textarea{border-radius:22px;min-height:48px;background:#16181b}
+.composer textarea:focus,.inp:focus{border-color:var(--acc-line)}
+.composer-wrap{border-top:1px solid var(--border);padding:12px 16px 14px}
+.composer .btn.primary{border-radius:999px;padding:12px 20px}
+.aside-tabs{background:transparent}
+.aside-tabs button{border-radius:999px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase}
+.aside-item,.gs-hit,.board-card,.aside-card,.aside-stat{border-radius:18px;background:#131416;border-color:var(--border)}
+.panel-box,.squad,.chat-aside{border-radius:24px}
+.chat-aside{background:#101113;border-color:var(--border)}
+.user-chip{border-radius:999px;background:var(--card);border-color:var(--border)}
+.aside-stat{display:flex;gap:14px;align-items:center;padding:14px 16px;flex:none}
+.aside-stat .stat{font-size:28px}
+.member-row{border-bottom:1px solid rgba(255,255,255,.04)}
+.mr-main b{font-weight:400}
+.mr-main span{font-size:11.5px;color:var(--muted-2)}
+
+@media (max-width:760px){
+  .msg-row{padding:3px 10px}
+  .msg-main{border-radius:18px;padding:10px 12px}
+  .panel-umo{margin:10px 10px 0;border-radius:20px;padding:14px}
+  .chat-item{margin:2px 6px;padding:10px}
+  .av-wrap-sm,.av-wrap-sm .avatar{width:42px;height:42px}
+  .nav-btn{padding:8px 12px;font-size:13px}
 }
 </style>
 </head>
@@ -837,7 +1054,7 @@
  <h2 class="page-title">Чаты</h2>
  <div class="page-sub">Личные диалоги, группы и пати. Ответ приходит за секунды — даже если приложение закрыто, придёт уведомление.</div>
  </div>
- <div class="chat-head-actions">
+ <div class="chat-head-actions tools-row">
  <button class="btn sm ghost" onclick="openGlobalSearch()">Поиск</button>
  <button class="btn sm ghost" onclick="openTeammates()">Тиммейты</button>
  <button class="btn sm ghost" onclick="openSessions()">Сессии</button>
@@ -958,6 +1175,13 @@
 <div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"></div></div>
 <div id="toasts"></div>
 
+ <div id="tabbar">
+ <button data-go="search">Поиск</button>
+ <button data-go="squads">Сквады</button>
+ <button data-go="chats">Чаты<span class="dot" id="unreadBadgeTab" style="display:none">0</span></button>
+ <button data-go="profile">Анкета</button>
+ </div>
+
 <script>
 /* =========================================================================
  SQUADUP — клиент
@@ -1040,9 +1264,13 @@ function hashNum(str) {
  return h;
 }
 function avatarStyle(nick) {
+ /* 1.11: спокойный тёмный тон вместо радуги — акцент в интерфейсе только один */
  const h = hashNum(nick || 'x');
- const a = h % 360, b = (a + 55) % 360;
- return `background:linear-gradient(135deg,hsl(${a} 85% 62%),hsl(${b} 85% 55%))`;
+ const a = h % 360;
+ const l1 = 15 + ((h >> 3) % 5);
+ const l2 = 11 + ((h >> 5) % 5);
+ return `background:linear-gradient(180deg,hsl(${a} 10% ${l1}%),hsl(${(a + 40) % 360} 12% ${l2}%));` +
+        `color:#e8eaee;border:1px solid rgba(255,255,255,.07)`;
 }
 /* аватар: если у игрока привязан Steam и показ разрешён — берём его картинку,
  иначе рисуем инициалы на градиенте по нику */
@@ -1100,6 +1328,7 @@ function go(view) {
  $$('.view').forEach(v => v.classList.remove('active'));
  $('#view-' + view).classList.add('active');
  $$('#nav .nav-btn').forEach(b => b.classList.toggle('active', b.dataset.go === view));
+ $$('#tabbar button').forEach(b => b.classList.toggle('on', b.dataset.go === view));
  $('#userMenu').classList.remove('open');
  if (view === 'chats') {
  // на телефоне вкладка «Чаты» всегда открывает список разговоров,
@@ -1114,6 +1343,7 @@ function go(view) {
  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 $$('#nav .nav-btn').forEach(b => b.onclick = () => go(b.dataset.go));
+$$('#tabbar button').forEach(b => b.onclick = () => go(b.dataset.go));
 $('#userChip').onclick = e => { e.stopPropagation(); $('#userMenu').classList.toggle('open'); };
 document.addEventListener('click', () => $('#userMenu').classList.remove('open'));
 
@@ -1944,7 +2174,7 @@ async function loadBlockedList() {
  box.innerHTML = d.items.map(b => `
  <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)">
  <div class="avatar a-40" style="${avatarStyle(b.nick)}">${esc(initials(b.nick))}</div>
- <div style="flex:1;min-width:0"><b>${esc(b.nick)}</b>
+ <div style="flex:1 1 240px;min-width:220px"><b>${esc(b.nick)}</b>
  <div class="hint">заблокирован ${timeAgo(b.created_at)}</div></div>
  <button class="btn sm ghost" onclick="unblockPlayer('${b.blocked_user_id}','${esc(b.nick)}')">Разблокировать</button>
  </div>`).join('');
@@ -2227,7 +2457,7 @@ function openInviteFriends() {
 
  <label class="lbl" style="margin-top:16px">Ссылка на приложение</label>
  <div style="display:flex;gap:8px;align-items:stretch">
- <input class="inp" id="inviteLink" readonly value="" style="flex:1;min-width:0">
+ <input class="inp" id="inviteLink" readonly value="" style="flex:1 1 240px;min-width:220px">
  <button class="btn primary" onclick="copyInviteLink()">Копировать</button>
  </div>
 
@@ -2623,6 +2853,10 @@ async function loadChats() {
     state.groupChats = data.items.filter(c => c.type !== 'dm');
     $('#unreadBadge').style.display = total ? '' : 'none';
     $('#unreadBadge').textContent = total;
+
+    const tabBadge = $('#unreadBadgeTab');
+
+    if (tabBadge) { tabBadge.style.display = total ? '' : 'none'; tabBadge.textContent = total; }
     updateAppBadge(total);
     renderChatList();
   } catch (e) { /* список обновится на следующем опросе */ }
@@ -2679,20 +2913,21 @@ function chatItemHtml(c) {
   const preview = c.typing
     ? '<i style="font-style:normal;color:var(--acc-2)">печатает...</i>'
     : (c.last_sender === 'me' ? 'Вы: ' : '') + esc(c.last_message || 'Нет сообщений');
-  const stateLine = [
-    c.game_short ? `<span class="gchip sm">${esc(c.game_short)}</span>` : '',
-    c.type !== 'dm' ? `<span class="ci-state">${esc(c.presence_label || '')}</span>` : '',
-    c.muted ? '<span class="ci-state">без звука</span>' : '',
-  ].join('');
+  /* 1.11: название и превью читаются с одного взгляда, метки — тихим капсом внизу */
+  const tags = [
+    c.type !== 'dm' && c.game_short ? esc(c.game_short).toUpperCase() : '',
+    c.type !== 'dm' && c.presence_label ? esc(c.presence_label).toUpperCase() : '',
+    c.muted ? 'БЕЗ ЗВУКА' : '',
+  ].filter(Boolean).join(' · ');
   const open = c.type === 'dm' ? `openChat(${c.id})` : `openGroup(${c.id})`;
   return `<div class="chat-item ${active ? 'active' : ''}" onclick="${open}">
     ${c.type === 'dm'
       ? avatarWithStatus(c.title, c.avatar, c.presence !== 'offline', null)
       : `<div class="gc-av">${c.type === 'party' ? 'П' : 'Г'}</div>`}
     <div class="ci">
-      <b>${badge}<span class="who">${who}</span>${stateLine}
-        ${c.unread ? '' : `<span>${timeAgo(c.updated_at)}</span>`}</b>
+      <b><span class="who">${badge}${who}</span>${c.unread ? '' : `<span class="ci-time">${timeAgo(c.updated_at)}</span>`}</b>
       <p class="${c.last_sender === 'me' ? 'muted-last' : ''}">${preview}</p>
+      ${tags ? `<div class="ci-tags">${tags}</div>` : ''}
     </div>
     ${c.unread ? `<div class="unread">${c.unread}</div>` : ''}
   </div>`;
@@ -2746,7 +2981,7 @@ function renderChatWindow() {
       <div class="quick-chips" id="quickChips"></div>
       <div class="composer">
         <button class="btn sm plus-btn" id="plusBtn" onclick="openPlusMenu(event)" title="Что добавить">+</button>
-        <textarea id="msgInput" rows="1" placeholder="Написать сообщение…"></textarea>
+        <textarea id="msgInput" rows="1" placeholder="Сообщение"></textarea>
         <button class="btn primary" onclick="sendMessage()"><span class="send-label">Отправить</span></button>
       </div>
     </div>`;
@@ -2771,15 +3006,15 @@ function dmHeadHtml(c) {
   return `<div class="chat-head">
     <button class="btn sm ghost back-to-chats" onclick="closeChatWindow()" title="К списку диалогов">Назад</button>
     <div id="chatPeerAv">${avatarWithStatus(c.title || 'Игрок', c.avatar, c.presence !== 'offline', null)}</div>
-    <div style="flex:1;min-width:0">
+    <div style="flex:1 1 240px;min-width:220px">
       <div class="nick" style="font-size:15px">${esc(c.title || 'Игрок')}</div>
       <div class="hint" id="chatPeerState">${esc(c.presence_label || '')}</div>
     </div>
     ${c.listing_id ? `<button class="btn sm ghost desk-only" onclick="openProfile(${c.listing_id})">Профиль</button>` : ''}
     <button class="btn sm ghost desk-only" onclick="inviteToParty(${JSON.stringify(c.title || '')})">В пати</button>
     <button class="btn sm ghost desk-only" onclick="startVoiceSoon()" title="Голосовой чат">Голос</button>
-    <button class="btn sm ghost desk-only" onclick="toggleChatSearch()" title="Поиск по переписке"><span class="search-label">Поиск</span></button>
-    <button class="btn sm ghost" onclick="openGlobalSearch()" title="Поиск по сообщениям, игрокам и файлам">Найти</button>
+    <button class="btn sm ghost desk-only" onclick="openGlobalSearch()" title="Поиск по сообщениям, игрокам и файлам">Поиск</button>
+    <button class="btn sm ghost desk-only" onclick="toggleChatSearch()" title="Поиск по этой переписке"><span class="search-label">В переписке</span></button>
     <button class="btn sm ghost" onclick="openConvMenu(event)" title="Ещё">Ещё</button>
   </div>`;
 }
@@ -2794,15 +3029,15 @@ function groupHeadHtml(c) {
   return `<div class="chat-head gc-head">
     <button class="btn sm ghost back-to-chats" onclick="closeChatWindow()" title="К списку диалогов">Назад</button>
     <div class="gc-av big">${c.type === 'party' ? 'П' : 'Г'}</div>
-    <div style="flex:1;min-width:0">
+    <div style="flex:1 1 240px;min-width:220px">
       <div class="nick" style="font-size:15px">${esc(c.title || 'Пати')}</div>
       <div class="gc-line" id="gcLine">${parts.filter(Boolean).map(p => esc(p)).join(' · ')}</div>
     </div>
     <button class="btn sm ghost desk-only" onclick="openPartyInvite()">Позвать</button>
     <button class="btn sm ghost desk-only" onclick="startVoiceSoon()" title="Голосовой чат">Голос</button>
-    <button class="btn sm ghost desk-only" onclick="toggleChatSearch()" title="Поиск по переписке"><span class="search-label">Поиск</span></button>
+    <button class="btn sm ghost desk-only" onclick="openGlobalSearch()" title="Поиск по сообщениям, игрокам и файлам">Поиск</button>
+    <button class="btn sm ghost desk-only" onclick="toggleChatSearch()" title="Поиск по этой переписке"><span class="search-label">В переписке</span></button>
     <button class="btn sm ghost desk-only" onclick="togglePanel()" title="Участники, закреплённые, ссылки">Панель</button>
-    <button class="btn sm ghost desk-only" onclick="openGlobalSearch()" title="Поиск по сообщениям, игрокам и файлам">Найти</button>
     <button class="btn sm ghost" onclick="openConvMenu(event)" title="Ещё">Ещё</button>
   </div>`;
 }
@@ -2893,6 +3128,10 @@ async function fetchMessages(scroll = false, all = false) {
   const total = state.inbox ? state.inbox.reduce((s, c) => s + (c.unread || 0), 0) : 0;
   $('#unreadBadge').style.display = total ? '' : 'none';
   $('#unreadBadge').textContent = total;
+
+  const tabBadge = $('#unreadBadgeTab');
+
+  if (tabBadge) { tabBadge.style.display = total ? '' : 'none'; tabBadge.textContent = total; }
   if (scroll) setTimeout(() => scrollToBottom(true), 60);
 }
 
@@ -3024,9 +3263,8 @@ function pollCardHtml(m) {
       const v = p.votes[i] || 0;
       const mine = p.my_choice === i;
       return `<button class="poll-opt ${mine ? 'mine' : ''}" onclick="votePoll(${m.id}, ${i})">
-        <span class="po-bar" style="width:${Math.round(v / total * 100)}%"></span>
-        <span class="po-text">${esc(opt)}</span>
-        <span class="po-count">${v}</span></button>`;
+        <span class="po-line"><span class="po-text">${esc(opt)}</span><span class="po-count">${v}</span></span>
+        <span class="po-bar"><b style="width:${Math.round(v / total * 100)}%"></b></span></button>`;
     }).join('')}
     <div class="cp-foot">Всего голосов: ${p.total || 0}${p.my_choice != null ? ' · ты проголосовал' : ''}
       ${p.multi ? ' · можно выбрать несколько' : ''}
@@ -3296,16 +3534,31 @@ function renderReadyBlock() {
   if (!isGroup() || !p) { box.style.display = 'none'; return; }
   const members = p.members || [];
   const ready = members.filter(m => m.ready).length;
+  const pct = members.length ? Math.round(ready / members.length * 100) : 0;
+  const left = members.length - ready;
   box.style.display = '';
   box.innerHTML = `
-    <div class="ready-row">
-      <b>Готовность ${ready}/${members.length}</b>
-      ${members.map(m => `<span class="ready-chip ${m.ready ? 'ready-on' : 'ready-off'}">
-        ${esc(m.nick)}${m.is_leader ? ' · лидер' : ''} · ${m.ready ? 'готов' : 'ждём'}</span>`).join('')}
-      <span style="flex:1"></span>
-      ${p.status === 'playing' ? '<span class="ready-chip ready-on">Игра идёт</span>'
-        : `<button class="btn sm ghost" onclick="setReady(${!myReady()})">${myReady() ? 'Снять готовность' : 'Я готов'}</button>
-           ${p.is_leader ? `<button class="btn sm primary" onclick="startPartyGame()">Начать игру</button>` : ''}`}
+    <div class="panel-umo">
+      <div class="pu-top">
+        <div>
+          <div class="lbl">Готовы</div>
+          <div class="stat">${ready}<small> / ${members.length}</small></div>
+        </div>
+        <div class="pu-right">
+          <div class="pbar"><em style="width:${pct}%"></em><i style="left:calc(${pct}% - 4px)"></i></div>
+          <div class="pu-scope"><span>${ready ? 'готовы' : 'никто не готов'}</span>
+            <span>${left ? 'ждём ' + left : 'состав готов'}</span></div>
+        </div>
+      </div>
+      <div class="pu-chips">
+        ${members.map(m => `<span class="ready-chip ${m.ready ? 'ready-on' : 'ready-off'}">
+          ${esc(m.nick)}${m.is_leader ? ' · лидер' : ''} · ${m.ready ? 'готов' : 'ждём'}</span>`).join('')}
+      </div>
+      <div class="pu-actions">
+        ${p.status === 'playing' ? '<span class="ready-chip ready-on">Игра идёт</span>'
+          : `<button class="btn sm ghost" onclick="setReady(${!myReady()})">${myReady() ? 'Снять готовность' : 'Я готов'}</button>
+             ${p.is_leader ? `<button class="btn sm primary" onclick="startPartyGame()">Начать игру</button>` : ''}`}
+      </div>
     </div>`;
 }
 function myReady() {
@@ -3412,7 +3665,14 @@ function asideBodyHtml() {
   }
   const members = state.party ? state.party.members : (state.members || []);
   const leaderId = state.party ? state.party.leader_user_id : null;
-  return `<div class="members-list">${members.map(m => `
+  const readyN = members.filter(m => m.ready).length;
+  const pct = members.length ? Math.round(readyN / members.length * 100) : 0;
+  return `${state.party ? `<div class="aside-stat">
+      <div><div class="lbl">Готовы</div><div class="stat">${readyN}<small> / ${members.length}</small></div></div>
+      <div style="flex:1"><div class="pbar"><em style="width:${pct}%"></em><i style="left:calc(${pct}% - 4px)"></i></div>
+        <div class="pu-scope"><span>${esc(state.party.game_short || state.party.game_name || '')}</span>
+          <span>${state.party.is_leader ? 'ты лидер' : 'участник'}</span></div></div>
+    </div>` : ''}<div class="members-list">${members.map(m => `
     <div class="member-row">
       <span class="av-click" onclick="openUserCard('${esc(m.nick)}', event)">${avatarHtml(m.nick, m.avatar, 'avatar sm')}</span>
       <div class="mr-main">
@@ -3823,7 +4083,7 @@ async function openUserCard(nick, ev) {
   box.innerHTML = `
     <div class="uc-top">
       ${avatarHtml(c.nick, c.avatar, 'avatar')}
-      <div style="flex:1;min-width:0">
+      <div style="flex:1 1 240px;min-width:220px">
         <b>${esc(c.nick)}</b>
         <span>${esc(c.label || '')}${c.listing_id ? '' : ' · без анкеты'}</span>
       </div>
@@ -4197,7 +4457,7 @@ async function loadSquads() {
  <article class="squad">
  <div class="squad-top">
  <div class="gchip lg">${esc(gameShort(s.game_id))}</div>
- <div style="flex:1;min-width:0">
+ <div style="flex:1 1 240px;min-width:220px">
  <h3>${esc(s.name)} <span class="tag-chip">${esc(s.tag)}</span></h3>
  <div class="meta"><span>${esc(s.game_name)}</span><span>${s.mode_label}</span><span>${esc(s.region_label)}</span></div>
  </div>

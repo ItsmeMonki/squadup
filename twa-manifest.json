@@ -13,8 +13,8 @@
   "startUrl": "/",
   "iconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-512.png",
   "maskableIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-maskable-512.png",
-  "appVersionName": "1.10.0",
-  "appVersionCode": 9,
+  "appVersionName": "1.11.0",
+  "appVersionCode": 10,
   "shortcuts": [
     {
       "name": "Ищу сейчас",
