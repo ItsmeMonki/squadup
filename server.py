@@ -479,6 +479,30 @@ def qint(query, name, default=0, lo=None, hi=None):
     return val
 
 
+def peer_presence(conn, peer_uid, listing_id):
+    """Онлайн-статус, время последнего визита и аватар собеседника.
+
+    Для реального игрока берём его анкету (онлайн + аватар из Steam, если игрок
+    разрешил показывать профиль). Для гостевой анкеты без аккаунта — саму анкету.
+    """
+    row = None
+    if peer_uid:
+        row = conn.execute("SELECT online, last_seen, user_id FROM listings WHERE user_id = ?",
+                           (peer_uid,)).fetchone()
+    if row is None and listing_id:
+        row = conn.execute("SELECT online, last_seen, user_id FROM listings WHERE id = ?",
+                           (listing_id,)).fetchone()
+    if row is None:
+        return False, None, ""
+    avatar = ""
+    if row["user_id"]:
+        su = conn.execute("SELECT steam_id, steam_avatar, steam_public FROM users WHERE id = ?",
+                          (row["user_id"],)).fetchone()
+        if su and su["steam_id"] and (su["steam_public"] is None or su["steam_public"]):
+            avatar = su["steam_avatar"] or ""
+    return bool(row["online"]), row["last_seen"], avatar
+
+
 def chat_partner(conn, c, uid):
     """По uid возвращает (peer_user_id, peer_nick, я_инициатор, мои_непрочитанные)."""
     is_initiator = (c["user_id"] == uid)
@@ -562,6 +586,21 @@ def migrate(conn):
         conn.execute("ALTER TABLE users ADD COLUMN steam_nick TEXT")
     if "steam_avatar" not in users_cols:
         conn.execute("ALTER TABLE users ADD COLUMN steam_avatar TEXT")
+    # --- чат: ответы на сообщения, правка, удаление, «печатает», прочтение ---
+    msg_cols = {r[1] for r in conn.execute("PRAGMA table_info(messages)")}
+    if "reply_to" not in msg_cols:
+        conn.execute("ALTER TABLE messages ADD COLUMN reply_to INTEGER")
+    if "edited_at" not in msg_cols:
+        conn.execute("ALTER TABLE messages ADD COLUMN edited_at TEXT")
+    if "deleted" not in msg_cols:
+        conn.execute("ALTER TABLE messages ADD COLUMN deleted INTEGER DEFAULT 0")
+    if "deleted_at" not in msg_cols:
+        conn.execute("ALTER TABLE messages ADD COLUMN deleted_at TEXT")
+    chat_cols = {r[1] for r in conn.execute("PRAGMA table_info(chats)")}
+    for col in ("typing_a", "typing_b", "read_a", "read_b"):
+        if col not in chat_cols:
+            conn.execute(f"ALTER TABLE chats ADD COLUMN {col} TEXT")
+
     if "steam_linked_at" not in users_cols:
         conn.execute("ALTER TABLE users ADD COLUMN steam_linked_at TEXT")
     if "steam_public" not in users_cols:
@@ -1000,13 +1039,14 @@ def row_to_listing(row, current_user_id=None, full=False, conn=None):
     games = json.loads(row["games"] or "[]")
     keys = row.keys()
     # Steam показываем только если владелец анкеты разрешил это в настройках
-    steam_nick, steam_url = "", ""
+    steam_nick, steam_url, avatar = "", "", ""
     if conn is not None and "user_id" in keys and row["user_id"]:
-        su = conn.execute("SELECT steam_id, steam_nick, steam_public FROM users WHERE id = ?",
+        su = conn.execute("SELECT steam_id, steam_nick, steam_avatar, steam_public FROM users WHERE id = ?",
                           (row["user_id"],)).fetchone()
         if su and su["steam_id"] and (su["steam_public"] is None or su["steam_public"]):
             steam_nick = su["steam_nick"] or ""
             steam_url = "https://steamcommunity.com/profiles/" + su["steam_id"]
+            avatar = su["steam_avatar"] or ""
     looking_at = row["looking_at"] if "looking_at" in keys else None
     is_looking = bool(looking_at and looking_at >= iso_cutoff(LOOKING_WINDOW_MIN))
     out = dict(
@@ -1019,6 +1059,7 @@ def row_to_listing(row, current_user_id=None, full=False, conn=None):
         languages=json.loads(row["languages"] or "[]"),
         steam_nick=steam_nick,
         steam_url=steam_url,
+        avatar=avatar,
         skill=row["skill"],
         skill_label=SKILL_LABELS.get(row["skill"], ""),
         mic=row["mic"],
@@ -1248,7 +1289,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, dict(discord_enabled=DISCORD_ENABLED,
                                         steam_enabled=True,
                                         push_enabled=PUSH_ENABLED,
-                                        app_name="SQUADUP", version="1.7"))
+                                        app_name="SQUADUP", version="1.8"))
 
         if path == "/api/games" and method == "GET":
             return self._send(200, dict(
@@ -2167,14 +2208,24 @@ class Handler(BaseHTTPRequestHandler):
                         game_id = gg["id"]
                 # роли сообщений клиенту: 'me' — это я
                 last_sender = None
+                last_text = ""
                 if last:
                     last_sender = last["sender"] if is_initiator else ("peer" if last["sender"] == "me" else "me")
+                    last_text = "Сообщение удалено" if last["deleted"] else last["text"]
+                # «печатает»: отметка живёт 8 секунд, роли такие же, как у сообщений
+                peer_typing_at = (c["typing_b"] if is_initiator else c["typing_a"]) if "typing_b" in c.keys() else None
+                peer_typing = bool(peer_typing_at and peer_typing_at >= iso_cutoff(8 / 60))
+                peer_online, peer_last_seen, peer_avatar = peer_presence(conn, peer_uid, c["listing_id"])
                 chats.append(dict(
                     id=c["id"], listing_id=c["listing_id"], peer_nick=peer_nick,
                     peer_user_id=(peer_uid[:8] if peer_uid else None),
                     unread=my_unread, game=first_game, game_id=game_id,
-                    last_message=(last["text"] if last else ""),
+                    last_message=last_text,
                     last_sender=last_sender,
+                    typing=peer_typing,
+                    online=peer_online,
+                    last_seen=peer_last_seen,
+                    avatar=peer_avatar,
                     updated_at=c["updated_at"],
                 ))
             return self._send(200, dict(items=chats))
@@ -2192,16 +2243,67 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(403, {"error": "Переписка с этим игроком недоступна"})
             if method == "GET":
                 after = qint(query, "after", 0, lo=0)
-                rows = conn.execute("SELECT * FROM messages WHERE chat_id = ? AND id > ? ORDER BY id",
-                                    (chat_id, after)).fetchall()
-                items = []
-                for r in rows:
-                    # внутренние роли ('me' = инициатор) дают роли относительно зрителя
+                full = (query.get("all") or [""])[0] in ("1", "true")
+                if full:
+                    after = 0
+                if after <= 0:
+                    # открыли диалог — отдаём всю переписку (для поиска и перехода к сообщению)
+                    rows = conn.execute("SELECT * FROM messages WHERE chat_id = ? ORDER BY id LIMIT 500",
+                                        (chat_id,)).fetchall()
+                else:
+                    rows = conn.execute("SELECT * FROM messages WHERE chat_id = ? AND id > ? ORDER BY id",
+                                        (chat_id, after)).fetchall()
+                # изменения уже загруженных сообщений: правки и удаления (для опроса)
+                changed_rows = []
+                if after > 0:
+                    since = (query.get("since") or [""])[0] or now_iso(-10)
+                    changed_rows = conn.execute(
+                        """SELECT * FROM messages WHERE chat_id = ? AND id <= ?
+                           AND ((edited_at IS NOT NULL AND edited_at >= ?)
+                                OR (deleted_at IS NOT NULL AND deleted_at >= ?))
+                           ORDER BY id LIMIT 100""",
+                        (chat_id, after, since, since)).fetchall()
+                # ответы: подтягиваем цитаты одним запросом, чтобы не дёргать базу на каждое сообщение
+                quotes = {}
+                ids = [r["reply_to"] for r in list(rows) + list(changed_rows) if r["reply_to"]]
+                if ids:
+                    marks = ",".join("?" * len(ids))
+                    for q in conn.execute(f"SELECT id, sender, text, deleted FROM messages WHERE id IN ({marks})", ids):
+                        quotes[q["id"]] = q
+                peer_read_at = (chat["read_b"] if is_initiator else chat["read_a"]) if "read_b" in chat.keys() else None
+                my_read_at = (chat["read_a"] if is_initiator else chat["read_b"]) if "read_a" in chat.keys() else None
+                peer_typing_at = (chat["typing_b"] if is_initiator else chat["typing_a"]) if "typing_b" in chat.keys() else None
+
+                def to_item(r):
                     sender = r["sender"] if is_initiator else ("peer" if r["sender"] == "me" else "me")
-                    items.append(dict(id=r["id"], sender=sender, text=r["text"], created_at=r["created_at"]))
-                return self._send(200, dict(items=items, peer_nick=peer_nick,
-                                            peer_user_id=(peer_uid[:8] if peer_uid else None),
-                                            is_demo=not peer_uid))
+                    quote = None
+                    q = quotes.get(r["reply_to"]) if r["reply_to"] else None
+                    if q is not None:
+                        q_sender = q["sender"] if is_initiator else ("peer" if q["sender"] == "me" else "me")
+                        who = (user["nickname"] if q_sender == "me" else peer_nick) or "Игрок"
+                        quote = dict(id=q["id"], nick=who,
+                                     text=("Сообщение удалено" if q["deleted"] else (q["text"] or ""))[:160])
+                    return dict(
+                        id=r["id"], sender=sender,
+                        text="" if r["deleted"] else r["text"],
+                        created_at=r["created_at"],
+                        deleted=bool(r["deleted"]),
+                        edited_at=(r["edited_at"] if "edited_at" in r.keys() else None),
+                        read=bool(sender == "me" and peer_read_at and peer_read_at >= r["created_at"]),
+                        reply_to=quote,
+                    )
+
+                items = [to_item(r) for r in rows]
+                changed = [to_item(r) for r in changed_rows if r["id"] not in {i["id"] for i in items}]
+                peer_online, peer_last_seen, peer_avatar = peer_presence(conn, peer_uid, chat["listing_id"])
+                return self._send(200, dict(
+                    items=items, peer_nick=peer_nick,
+                    peer_user_id=(peer_uid[:8] if peer_uid else None),
+                    is_demo=not peer_uid,
+                    online=peer_online, last_seen=peer_last_seen, avatar=peer_avatar,
+                    typing=bool(peer_typing_at and peer_typing_at >= iso_cutoff(8 / 60)),
+                    my_read_at=my_read_at, peer_read_at=peer_read_at,
+                    changed=changed))
             if method == "POST":
                 if peer_uid and is_blocked_between(conn, uid, peer_uid):
                     return self._send(403, {"error": "Переписка с этим игроком недоступна"})
@@ -2209,9 +2311,18 @@ class Handler(BaseHTTPRequestHandler):
                 text = (body.get("text") or "").strip()[:800]
                 if not text:
                     return self._send(400, {"error": "Пустое сообщение"})
+                # ответ на сообщение: принимаем только сообщение из этого же чата
+                reply_to = body.get("reply_to")
+                reply_to = int(reply_to) if str(reply_to or "").isdigit() else None
+                if reply_to:
+                    same = conn.execute("SELECT 1 FROM messages WHERE id = ? AND chat_id = ?",
+                                        (reply_to, chat_id)).fetchone()
+                    if not same:
+                        reply_to = None
                 internal_sender = "me" if is_initiator else "peer"
-                cur = conn.execute("INSERT INTO messages (chat_id, sender, text, created_at) VALUES (?,?,?,?)",
-                                   (chat_id, internal_sender, text, now_iso()))
+                cur = conn.execute(
+                    "INSERT INTO messages (chat_id, sender, text, created_at, reply_to) VALUES (?,?,?,?,?)",
+                    (chat_id, internal_sender, text, now_iso(), reply_to))
                 # своё непрочитанное сбрасываем (я прочитал, раз пишу), собеседнику — +1
                 if is_initiator:
                     if peer_uid:
@@ -2233,6 +2344,30 @@ class Handler(BaseHTTPRequestHandler):
                         url="/?view=chats", badge=unread_count(conn, peer_uid), tag=f"chat-{chat_id}"))
                 return self._send(200, dict(ok=True, id=cur.lastrowid))
 
+        m = re.match(r"^/api/chats/(\d+)/search$", path)
+        if m and method == "GET":
+            chat_id = int(m.group(1))
+            chat = conn.execute("SELECT * FROM chats WHERE id = ? AND (user_id = ? OR peer_user_id = ?)",
+                                (chat_id, uid, uid)).fetchone()
+            if not chat:
+                return self._send(404, {"error": "Чат не найден"})
+            q = (query.get("q") or [""])[0].strip()[:80]
+            if len(q) < 2:
+                return self._send(200, dict(items=[]))
+            _, peer_nick, is_initiator, _ = chat_partner(conn, chat, uid)
+            like = "%" + q.replace("%", "").replace("_", "") + "%"
+            rows = conn.execute(
+                """SELECT id, sender, text, created_at FROM messages
+                   WHERE chat_id = ? AND deleted = 0 AND text LIKE ? COLLATE NOCASE
+                   ORDER BY id DESC LIMIT 50""", (chat_id, like)).fetchall()
+            items = []
+            for r in rows:
+                mine = (r["sender"] == "me") == is_initiator
+                items.append(dict(id=r["id"], text=r["text"][:160],
+                                  nick=(user["nickname"] if mine else peer_nick),
+                                  created_at=r["created_at"]))
+            return self._send(200, dict(items=items, q=q))
+
         m = re.match(r"^/api/chats/(\d+)/read$", path)
         if m and method == "POST":
             chat_id = int(m.group(1))
@@ -2241,11 +2376,53 @@ class Handler(BaseHTTPRequestHandler):
             if not chat:
                 return self._send(404, {"error": "Чат не найден"})
             if chat["user_id"] == uid:
-                conn.execute("UPDATE chats SET unread = 0 WHERE id = ?", (chat_id,))
+                # отметка времени нужна для статуса «прочитано» у собеседника
+                conn.execute("UPDATE chats SET unread = 0, read_a = ? WHERE id = ?", (now_iso(), chat_id))
             else:
-                conn.execute("UPDATE chats SET unread_b = 0 WHERE id = ?", (chat_id,))
+                conn.execute("UPDATE chats SET unread_b = 0, read_b = ? WHERE id = ?", (now_iso(), chat_id))
             conn.commit()
             return self._send(200, dict(ok=True))
+
+        m = re.match(r"^/api/chats/(\d+)/typing$", path)
+        if m and method == "POST":
+            chat_id = int(m.group(1))
+            chat = conn.execute("SELECT * FROM chats WHERE id = ? AND (user_id = ? OR peer_user_id = ?)",
+                                (chat_id, uid, uid)).fetchone()
+            if not chat:
+                return self._send(404, {"error": "Чат не найден"})
+            col = "typing_a" if chat["user_id"] == uid else "typing_b"
+            conn.execute(f"UPDATE chats SET {col} = ? WHERE id = ?", (now_iso(), chat_id))
+            conn.commit()
+            return self._send(200, dict(ok=True))
+
+        m = re.match(r"^/api/chats/(\d+)/messages/(\d+)/(edit|delete)$", path)
+        if m and method == "POST":
+            chat_id, msg_id, action = int(m.group(1)), int(m.group(2)), m.group(3)
+            chat = conn.execute("SELECT * FROM chats WHERE id = ? AND (user_id = ? OR peer_user_id = ?)",
+                                (chat_id, uid, uid)).fetchone()
+            if not chat:
+                return self._send(404, {"error": "Чат не найден"})
+            row = conn.execute("SELECT * FROM messages WHERE id = ? AND chat_id = ?", (msg_id, chat_id)).fetchone()
+            if not row:
+                return self._send(404, {"error": "Сообщение не найдено"})
+            is_initiator = chat["user_id"] == uid
+            mine = (row["sender"] == "me") == is_initiator   # роли в базе относительные
+            if not mine:
+                return self._send(403, {"error": "Можно менять только свои сообщения"})
+            if row["deleted"]:
+                return self._send(400, {"error": "Сообщение уже удалено"})
+            if action == "delete":
+                conn.execute("UPDATE messages SET deleted = 1, deleted_at = ?, text = '', reply_to = NULL "
+                             "WHERE id = ?", (now_iso(), msg_id))
+                conn.commit()
+                return self._send(200, dict(ok=True, deleted=True))
+            body = self._json_body()
+            text = (body.get("text") or "").strip()[:800]
+            if not text:
+                return self._send(400, {"error": "Пустое сообщение"})
+            conn.execute("UPDATE messages SET text = ?, edited_at = ? WHERE id = ?", (text, now_iso(), msg_id))
+            conn.commit()
+            return self._send(200, dict(ok=True, edited=True, text=text))
 
         m = re.match(r"^/api/chats/(\d+)/simulate-reply$", path)
         if m and method == "POST":
