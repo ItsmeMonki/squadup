@@ -13,20 +13,42 @@
   "startUrl": "/",
   "iconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-512.png",
   "maskableIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-maskable-512.png",
-  "appVersionName": "1.9.0",
-  "appVersionCode": 8,
+  "appVersionName": "1.10.0",
+  "appVersionCode": 9,
   "shortcuts": [
-    { "name": "Ищу сейчас", "shortName": "Ищу сейчас", "url": "/?view=search", "chosenIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-192.png" },
-    { "name": "Сквады", "shortName": "Сквады", "url": "/?view=squads", "chosenIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-192.png" },
-    { "name": "Мои чаты", "shortName": "Чаты", "url": "/?view=chats", "chosenIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-192.png" }
+    {
+      "name": "Ищу сейчас",
+      "shortName": "Ищу сейчас",
+      "url": "/?view=search",
+      "chosenIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-192.png"
+    },
+    {
+      "name": "Сквады",
+      "shortName": "Сквады",
+      "url": "/?view=squads",
+      "chosenIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-192.png"
+    },
+    {
+      "name": "Мои чаты",
+      "shortName": "Чаты",
+      "url": "/?view=chats",
+      "chosenIconUrl": "https://ТВОЙ-ДОМЕН.example.com/icons/icon-192.png"
+    }
   ],
-  "signingKey": { "path": "./android.keystore", "alias": "squadup" },
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "squadup"
+  },
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://ТВОЙ-ДОМЕН.example.com/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {
-    "playBilling": { "enabled": false },
-    "locationDelegation": { "enabled": false }
+    "playBilling": {
+      "enabled": false
+    },
+    "locationDelegation": {
+      "enabled": false
+    }
   },
   "isChromeOSOnly": false,
   "isMetaQuest": false,

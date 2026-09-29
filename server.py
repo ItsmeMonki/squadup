@@ -18,12 +18,15 @@ import uuid
 import webpush
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 # Путь к базе можно переопределить (в облаке указываем том, например /data/squadup.db).
 DB_PATH = os.environ.get("DB_PATH") or os.path.join(BASE_DIR, "data.db")
+UPLOADS_DIR = os.environ.get("UPLOADS_DIR") or os.path.join(BASE_DIR, "uploads")
+MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB") or 8)
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 PORT = int(os.environ.get("PORT", "8000"))
 # Демо-данные (88 анкет и 14 сквадов) — только если явно попросили: SQUADUP_DEMO=1.
 # По умолчанию база пустая: приложение рассчитано на реальных игроков.
@@ -640,6 +643,84 @@ def presence_line(p):
     return "Не в сети"
 
 
+def parse_multipart(body, boundary):
+    """Разбор multipart/form-data без внешних библиотек (у нас только стандартная)."""
+    out = {}
+    if not boundary:
+        return out
+    delim = b"--" + boundary.encode()
+    for part in body.split(delim)[1:]:
+        if part[:2] == b"--":
+            break
+        head, sep, data = part.partition(b"\r\n\r\n")
+        if not sep:
+            continue
+        if data.endswith(b"\r\n"):
+            data = data[:-2]
+        name = filename = None
+        ctype = "application/octet-stream"
+        for line in head.decode("utf-8", "replace").split("\r\n"):
+            low = line.lower()
+            if low.startswith("content-disposition"):
+                for kv in line.split(";")[1:]:
+                    k, _, v = kv.strip().partition("=")
+                    v = v.strip().strip('"')
+                    if k == "name":
+                        name = v
+                    elif k == "filename":
+                        filename = v
+            elif low.startswith("content-type"):
+                ctype = line.split(":", 1)[1].strip()
+        if name:
+            out[name] = dict(filename=filename, ctype=ctype, data=data)
+    return out
+
+
+def safe_filename(name):
+    name = os.path.basename(name or "file")
+    name = re.sub(r"[^A-Za-zА-Яа-я0-9._-]+", "_", name)[:80] or "file"
+    return name
+
+
+def extract_mentions(conn, chat_id, text):
+    """Упоминания @ник внутри группового чата: только участники этой группы."""
+    found = []
+    for token in re.findall(r"@([A-Za-zА-Яа-я0-9_]{2,32})", text or ""):
+        row = conn.execute(
+            "SELECT u.id, u.nickname FROM users u JOIN group_members m ON m.user_id = u.id "
+            "WHERE m.chat_id = ? AND u.nickname = ? COLLATE NOCASE", (chat_id, token)).fetchone()
+        if row and not any(x["user_id"] == row["id"] for x in found):
+            found.append(dict(nick=row["nickname"], user_id=row["id"]))
+    return found
+
+
+def poll_expired(meta):
+    dl = (meta or {}).get("deadline")
+    return bool(dl and dl < now_iso())
+
+
+def player_tags(conn, listing):
+    """Словами, без значков: короткие метки игрока для карточки."""
+    tags = []
+    if listing["mic"]:
+        tags.append("С микрофоном")
+    if (listing["rating"] or 0) >= 4.5 and (listing["reviews_count"] or 0) >= 3:
+        tags.append("Надёжный тиммейт")
+    if (listing["reviews_count"] or 0) >= 5:
+        tags.append("Опытный в составе")
+    vibe = VIBES.get(listing["vibe"], "")
+    if vibe:
+        tags.append("Настрой: " + vibe.lower())
+    if listing["verified"]:
+        tags.append("Steam подтверждён")
+    sched = json.loads(listing["schedule"] or "[]")
+    if any("Вечер" in x for x in sched):
+        tags.append("Играет вечерами")
+    if any("Ночь" in x for x in sched):
+        tags.append("Играет ночью")
+    return tags[:5]
+
+
 def resolve_user_key(conn, key):
     """По нику или id находим аккаунт — удобно и для ссылок, и для списков."""
     key = (key or "").strip()[:64]
@@ -703,7 +784,8 @@ def party_brief(conn, party_id, uid=None):
     members = []
     for m in conn.execute("SELECT * FROM group_members WHERE chat_id = ? ORDER BY joined_at", (p["chat_id"],)):
         card = user_card(conn, m["user_id"])
-        card.update(dict(user_id=m["user_id"], ready=bool(m["ready"]), role=m["role"],
+        card.update(dict(last_read_at=(m["last_read_at"] if "last_read_at" in m.keys() else None),
+                         user_id=m["user_id"], ready=bool(m["ready"]), role=m["role"],
                          is_leader=(m["user_id"] == p["leader_user_id"]),
                          is_me=(m["user_id"] == uid)))
         members.append(card)
@@ -797,7 +879,7 @@ REACTIONS_ALLOWED = ["Го", "Жду", "Круто", "Смешно", "Мимо",
 
 
 def poll_state(conn, chat_kind, chat_id, message_id, meta, uid):
-    """Опрос: варианты, голоса, мой выбор."""
+    """Опрос: варианты, голоса, мой выбор (одним или несколькими)."""
     options = meta.get("options") or []
     rows = conn.execute("SELECT choice, user_id FROM poll_votes WHERE chat_kind = ? AND chat_id = ? "
                         "AND message_id = ?", (chat_kind, chat_id, message_id)).fetchall()
@@ -811,7 +893,9 @@ def poll_state(conn, chat_kind, chat_id, message_id, meta, uid):
         if r["user_id"] == uid:
             mine = r["choice"]
     return dict(question=meta.get("question") or "Опрос", options=options, votes=votes,
-                voters=voters, my_choice=mine, total=len(rows))
+                voters=voters, my_choice=mine, total=len(rows),
+                multi=bool(meta.get("multi")), deadline=meta.get("deadline"),
+                expired=poll_expired(meta))
 
 
 def group_item(conn, r, uid, quotes=None, reacts=None, chat_kind="group", chat_id=None):
@@ -926,7 +1010,15 @@ def migrate(conn):
         user_id TEXT,
         choice INTEGER,
         created_at TEXT,
-        UNIQUE(chat_kind, chat_id, message_id, user_id)
+        UNIQUE(chat_kind, chat_id, message_id, user_id, choice)
+    );
+    CREATE TABLE IF NOT EXISTS teammates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        mate_user_id TEXT,
+        note TEXT,
+        created_at TEXT,
+        UNIQUE(user_id, mate_user_id)
     );
     CREATE TABLE IF NOT EXISTS party_sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -947,6 +1039,18 @@ def migrate(conn):
                      ("last_seen", "ALTER TABLE users ADD COLUMN last_seen TEXT")):
         if col not in {r[1] for r in conn.execute("PRAGMA table_info(users)")}:
             conn.execute(ddl)
+    # опросы: в многовариантных один игрок может выбрать несколько строк —
+    # перестраиваем таблицу, если она осталась от версии с одной строкой на игрока
+    pv_sql = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='poll_votes'").fetchone()
+    if pv_sql and pv_sql["sql"] and "user_id, choice" not in pv_sql["sql"]:
+        conn.execute("ALTER TABLE poll_votes RENAME TO poll_votes_old")
+        conn.execute("""CREATE TABLE poll_votes (
+            chat_kind TEXT, chat_id INTEGER, message_id INTEGER, user_id TEXT, choice INTEGER,
+            created_at TEXT, UNIQUE(chat_kind, chat_id, message_id, user_id, choice))""")
+        conn.execute("INSERT OR IGNORE INTO poll_votes (chat_kind, chat_id, message_id, user_id, choice, created_at) "
+                     "SELECT chat_kind, chat_id, message_id, user_id, choice, created_at FROM poll_votes_old")
+        conn.execute("DROP TABLE poll_votes_old")
+        conn.commit()
     # личные сообщения: тип и данные карточек (приглашение, поиск игроков), закрепление
     for col, ddl in (("kind", "ALTER TABLE messages ADD COLUMN kind TEXT DEFAULT 'text'"),
                      ("meta", "ALTER TABLE messages ADD COLUMN meta TEXT"),
@@ -1644,6 +1748,9 @@ class Handler(BaseHTTPRequestHandler):
                 )])
             if path in ("/healthz", "/api/healthz") and method == "GET":
                 return self._send(200, dict(ok=True, db=os.path.basename(DB_PATH), games=len(GAMES)))
+            if path.startswith("/uploads/"):
+                return self.serve_upload(path)
+
             if path.startswith("/api/"):
                 return self.handle_api(method, path, query, conn)
             if method == "GET":
@@ -1674,6 +1781,16 @@ class Handler(BaseHTTPRequestHandler):
         ".woff2": "font/woff2",
     }
 
+    def serve_upload(self, path):
+        name = os.path.basename(path)
+        full = os.path.join(UPLOADS_DIR, name)
+        if not os.path.isfile(full):
+            return self._send(404, {"error": "Файл не найден"})
+        ctype = self.MIME.get(os.path.splitext(full)[1].lower(), "application/octet-stream")
+        with open(full, "rb") as fh:
+            data = fh.read()
+        return self._send(200, data, ctype, cache="public, max-age=86400")
+
     def serve_static(self, path):
         rel = "index.html" if path == "/" else path.lstrip("/")
         full = os.path.normpath(os.path.join(STATIC_DIR, rel))
@@ -1700,7 +1817,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, dict(discord_enabled=DISCORD_ENABLED,
                                         steam_enabled=True,
                                         push_enabled=PUSH_ENABLED,
-                                        app_name="SQUADUP", version="1.9"))
+                                        app_name="SQUADUP", version="1.10"))
 
         if path == "/api/games" and method == "GET":
             return self._send(200, dict(
@@ -2579,8 +2696,9 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 chat_id = chat["id"]
                 initiator_is_me = (chat["user_id"] == uid)
-            conn.execute("INSERT INTO messages (chat_id, sender, text, created_at) VALUES (?,?,?,?)",
-                         (chat_id, "me" if initiator_is_me else "peer", text, now_iso()))
+            conn.execute("INSERT INTO messages (chat_id, sender, text, kind, meta, created_at) "
+                         "VALUES (?,?,?,?,?,?)",
+                         (chat_id, "me" if initiator_is_me else "peer", text, "text", "{}", now_iso()))
             if initiator_is_me:
                 conn.execute("UPDATE chats SET updated_at = ?, unread_b = unread_b + 1 WHERE id = ?",
                              (now_iso(), chat_id))
@@ -2749,7 +2867,25 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send(403, {"error": "Переписка с этим игроком недоступна"})
                 body = self._json_body()
                 text = (body.get("text") or "").strip()[:800]
-                if not text:
+                kind = (body.get("kind") or "text")[:12]
+                meta = body.get("meta") or {}
+                if kind not in ("text", "media", "invite", "lfg"):
+                    return self._send(400, {"error": "Неизвестный тип сообщения"})
+                if kind == "media":
+                    clean = []
+                    for att in (meta.get("attachments") or [])[:6]:
+                        url = str(att.get("url") or "")
+                        if not url.startswith("/uploads/"):
+                            continue
+                        clean.append(dict(url=url, name=str(att.get("name") or "файл")[:80],
+                                          type=str(att.get("type") or "")[:60], size=int(att.get("size") or 0),
+                                          is_image=bool(att.get("is_image")),
+                                          is_video=bool(att.get("is_video"))))
+                    if not clean:
+                        return self._send(400, {"error": "К сообщению не приложен файл"})
+                    meta = dict(meta)
+                    meta["attachments"] = clean
+                if not text and kind != "media":
                     return self._send(400, {"error": "Пустое сообщение"})
                 # ответ на сообщение: принимаем только сообщение из этого же чата
                 reply_to = body.get("reply_to")
@@ -2761,8 +2897,10 @@ class Handler(BaseHTTPRequestHandler):
                         reply_to = None
                 internal_sender = "me" if is_initiator else "peer"
                 cur = conn.execute(
-                    "INSERT INTO messages (chat_id, sender, text, created_at, reply_to) VALUES (?,?,?,?,?)",
-                    (chat_id, internal_sender, text, now_iso(), reply_to))
+                    "INSERT INTO messages (chat_id, sender, text, kind, meta, reply_to, created_at) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    (chat_id, internal_sender, text, kind, json.dumps(meta, ensure_ascii=False),
+                     reply_to, now_iso()))
                 # своё непрочитанное сбрасываем (я прочитал, раз пишу), собеседнику — +1
                 if is_initiator:
                     if peer_uid:
@@ -2954,6 +3092,182 @@ class Handler(BaseHTTPRequestHandler):
                     body=(body.get("message") or "Игрок хочет присоединиться")[:140],
                     url="/?view=squads", tag=f"squad-{squad_id}"))
             return self._send(200, dict(ok=True))
+
+        m = re.match(r"^/api/users/([^/]+)/card$", path)
+        if m and method == "GET":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            import urllib.parse
+            key = urllib.parse.unquote(m.group(1))
+            target = resolve_user_key(conn, key)
+            if not target:
+                return self._send(404, {"error": "Игрок не найден"})
+            card = user_card(conn, target)
+            listing = conn.execute("SELECT * FROM listings WHERE user_id = ? ORDER BY id LIMIT 1",
+                                   (target,)).fetchone()
+            if listing is not None:
+                info = row_to_listing(listing, uid, conn=conn)
+                card["listing_id"] = info["id"]
+                card["rating"] = info["rating"]
+                card["reviews_count"] = info["reviews_count"]
+                card["region_label"] = info["region_label"]
+                card["mic"] = info["mic"]
+                card["games"] = [dict(id=g["game_id"], name=g["name"], short=g["short"], rank=g["rank"])
+                                 for g in info["games"][:4]]
+                card["tags"] = player_tags(conn, listing)
+                card["about"] = (info["about"] or "")[:200]
+                card["is_meaningful"] = True
+            else:
+                card.update(dict(listing_id=None, rating=None, reviews_count=0, region_label="",
+                                 mic=False, games=[], tags=[], about="", is_meaningful=False))
+            blocked = is_blocked_between(conn, uid, target)
+            card["blocked"] = bool(blocked)
+            card["is_me"] = (target == uid)
+            return self._send(200, dict(card=card))
+
+        # ==================== загрузка медиа (1.10) ====================
+        if path == "/api/uploads" and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            ctype = self.headers.get("Content-Type") or ""
+            if "multipart/form-data" not in ctype:
+                return self._send(400, {"error": "Нужен файл в форме multipart/form-data"})
+            boundary = ""
+            for kv in ctype.split(";"):
+                k, _, v = kv.strip().partition("=")
+                if k.lower() == "boundary":
+                    boundary = v.strip().strip('"')
+            length = int(self.headers.get("Content-Length") or 0)
+            limit = MAX_UPLOAD_MB * 1024 * 1024
+            if length <= 0:
+                return self._send(400, {"error": "Пустой запрос"})
+            if length > limit:
+                return self._send(413, {"error": f"Файл больше {MAX_UPLOAD_MB} МБ"})
+            body = self.rfile.read(length)
+            parts = parse_multipart(body, boundary)
+            part = parts.get("file") or (list(parts.values())[0] if parts else None)
+            if not part or not part["data"]:
+                return self._send(400, {"error": "Файл не пришёл"})
+            if len(part["data"]) > limit:
+                return self._send(413, {"error": f"Файл больше {MAX_UPLOAD_MB} МБ"})
+            shown_name = (part["filename"] or "файл").strip()[:80] or "файл"
+            ext = os.path.splitext(safe_filename(shown_name))[1].lower()[:8]
+            stored = f"{uuid.uuid4().hex[:16]}{ext}"
+            with open(os.path.join(UPLOADS_DIR, stored), "wb") as fh:
+                fh.write(part["data"])
+            ftype = part["ctype"] or "application/octet-stream"
+            is_image = ftype.startswith("image/")
+            is_video = ftype.startswith("video/")
+            return self._send(200, dict(ok=True, url="/uploads/" + stored, name=shown_name,
+                                        type=ftype, size=len(part["data"]),
+                                        is_image=is_image, is_video=is_video))
+
+        # ==================== общий поиск (1.10) ====================
+        if path == "/api/search" and method == "GET":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            q = (query.get("q") or [""])[0].strip()
+            from_nick = (query.get("from") or [""])[0].strip()
+            game_id = (query.get("game") or [""])[0].strip()
+            what = (query.get("kind") or ["all"])[0]
+            # «from:Ник game:cs2» можно писать прямо в строке поиска
+            for token in q.split():
+                if token.lower().startswith("from:"):
+                    from_nick = token[5:]
+                elif token.lower().startswith("game:"):
+                    game_id = token[5:]
+            q_clean = " ".join(t for t in q.split() if not t.lower().startswith(("from:", "game:")))
+            like = "%" + q_clean + "%"
+            wants = lambda k: what in ("all", k)   # noqa: E731
+            out = dict(messages=[], players=[], files=[], links=[])
+            if q_clean and wants("messages"):
+                rows = conn.execute(
+                    """SELECT m.*, c.id AS chat_id FROM messages m JOIN chats c ON c.id = m.chat_id
+                       WHERE (c.user_id = ? OR c.peer_user_id = ?) AND m.deleted = 0 AND m.text LIKE ?
+                       ORDER BY m.id DESC LIMIT 20""", (uid, uid, like)).fetchall()
+                for r in rows:
+                    _, peer_nick, is_initiator, _ = chat_partner(conn, conn.execute(
+                        "SELECT * FROM chats WHERE id = ?", (r["chat_id"],)).fetchone(), uid)
+                    sender_uid = (conn.execute("SELECT user_id, peer_user_id FROM chats WHERE id = ?",
+                                               (r["chat_id"],)).fetchone())
+                    sender = user["nickname"] if r["sender"] == ("me" if is_initiator else "peer") else peer_nick
+                    if from_nick and from_nick.lower() not in (sender or "").lower():
+                        continue
+                    out["messages"].append(dict(chat_kind="dm", chat_id=r["chat_id"], chat_title=peer_nick,
+                                                id=r["id"], text=(r["text"] or "")[:200], nick=sender,
+                                                created_at=r["created_at"]))
+                grows = conn.execute(
+                    """SELECT gm.*, g.id AS gid FROM group_messages gm
+                       JOIN group_chats g ON g.id = gm.chat_id
+                       JOIN group_members mem ON mem.chat_id = g.id AND mem.user_id = ?
+                       WHERE gm.deleted = 0 AND gm.text LIKE ? ORDER BY gm.id DESC LIMIT 20""",
+                    (uid, like)).fetchall()
+                for r in grows:
+                    nick = user_display(conn, r["user_id"])
+                    if from_nick and from_nick.lower() not in (nick or "").lower():
+                        continue
+                    g = conn.execute("SELECT * FROM group_chats WHERE id = ?", (r["chat_id"],)).fetchone()
+                    out["messages"].append(dict(chat_kind="group", chat_id=r["chat_id"],
+                                                chat_title=group_title(conn, g), id=r["id"],
+                                                text=(r["text"] or "")[:200], nick=nick,
+                                                created_at=r["created_at"]))
+                out["messages"].sort(key=lambda x: x["created_at"] or "", reverse=True)
+                out["messages"] = out["messages"][:25]
+            if wants("players") and q_clean:
+                rows = conn.execute(
+                    """SELECT * FROM listings WHERE hidden = 0 AND (nick LIKE ? OR about LIKE ?)
+                       ORDER BY rating DESC LIMIT 15""", (like, like)).fetchall()
+                for r in rows:
+                    if game_id and not any(g["game_id"] == game_id for g in json.loads(r["games"] or "[]")):
+                        continue
+                    info = row_to_listing(r, uid, conn=conn)
+                    out["players"].append(dict(listing_id=info["id"], nick=info["nick"], region=info["region_label"],
+                                               rating=info["rating"], avatar=info["avatar"],
+                                               games=[g["short"] for g in info["games"][:3]]))
+            if wants("files") or wants("links"):
+                # файлы и ссылки из тех чатов, где я участник
+                grows = conn.execute(
+                    """SELECT gm.*, g.id AS gid FROM group_messages gm
+                       JOIN group_chats g ON g.id = gm.chat_id
+                       JOIN group_members mem ON mem.chat_id = g.id AND mem.user_id = ?
+                       WHERE gm.deleted = 0 ORDER BY gm.id DESC LIMIT 400""", (uid,)).fetchall()
+                dms = conn.execute(
+                    """SELECT m.* FROM messages m JOIN chats c ON c.id = m.chat_id
+                       WHERE (c.user_id = ? OR c.peer_user_id = ?) AND m.deleted = 0
+                       ORDER BY m.id DESC LIMIT 400""", (uid, uid)).fetchall()
+                for r in list(grows) + list(dms):
+                    gid = r["gid"] if "gid" in r.keys() else None
+                    title = (group_title(conn, conn.execute("SELECT * FROM group_chats WHERE id = ?",
+                                                            (gid,)).fetchone()) if gid else "Личный диалог")
+                    meta = {}
+                    if r["meta"]:
+                        try:
+                            meta = json.loads(r["meta"])
+                        except Exception:
+                            meta = {}
+                    for att in (meta.get("attachments") or []):
+                        item = dict(chat_kind=("group" if gid else "dm"), chat_id=(gid or r["chat_id"]),
+                                    chat_title=title, id=r["id"], url=att.get("url", ""),
+                                    name=att.get("name", ""), type=att.get("type", ""),
+                                    created_at=r["created_at"], nick=user_display(conn, r["user_id"]) if gid
+                                    else "")
+                        if wants("files") and (not q_clean or q_clean.lower() in (item["name"] or "").lower()):
+                            out["files"].append(item)
+                    for u in re.findall(r"https?://[^\s]+", r["text"] or ""):
+                        if wants("links") and (not q_clean or q_clean.lower() in u.lower()):
+                            out["links"].append(dict(chat_kind=("group" if gid else "dm"),
+                                                     chat_id=(gid or r["chat_id"]), chat_title=title,
+                                                     id=r["id"], url=u[:300], created_at=r["created_at"]))
+                out["files"] = out["files"][:25]
+                out["links"] = out["links"][:25]
+            # подсказки по играм каталога: искать можно и по названию игры
+            games_hint = []
+            if q_clean:
+                low = q_clean.lower()
+                games_hint = [dict(id=g["id"], name=g["name"]) for g in GAMES
+                              if low in g["name"].lower() or low in g["short"].lower()][:5]
+            return self._send(200, dict(query=q_clean, from_nick=from_nick, game=game_id,
+                                        results=out, games=games_hint))
 
         # ==================== игровой слой чата (1.9) ====================
         if path == "/api/presence" and method == "GET":
@@ -3284,7 +3598,12 @@ class Handler(BaseHTTPRequestHandler):
                             f"GROUP BY message_id, value ORDER BY MIN(created_at)", [uid, chat_id] + ids):
                         reacts.setdefault(r["message_id"], []).append(
                             dict(value=r["value"], count=r["c"], mine=bool(r["me"])))
-                members = [user_card(conn, x) for x in group_member_ids(conn, chat_id) if x != uid]
+                members = []
+                for mrow in conn.execute("SELECT * FROM group_members WHERE chat_id = ? AND user_id != ?",
+                                         (chat_id, uid)):
+                    mcard = user_card(conn, mrow["user_id"])
+                    mcard["last_read_at"] = mrow["last_read_at"]
+                    members.append(mcard)
                 mrow = conn.execute("SELECT * FROM group_members WHERE chat_id = ? AND user_id = ?",
                                     (chat_id, uid)).fetchone()
                 peer_read = conn.execute(
@@ -3310,6 +3629,23 @@ class Handler(BaseHTTPRequestHandler):
                 meta = body.get("meta") or {}
                 if kind not in ("text", "lfg", "invite", "poll", "media"):
                     return self._send(400, {"error": "Неизвестный тип сообщения"})
+                if kind == "media" and not (meta.get("attachments") or []):
+                    return self._send(400, {"error": "К сообщению не приложен файл"})
+                if kind == "media":
+                    clean = []
+                    for att in (meta.get("attachments") or [])[:6]:
+                        url = str(att.get("url") or "")
+                        if not url.startswith("/uploads/"):
+                            continue
+                        clean.append(dict(url=url, name=str(att.get("name") or "файл")[:80],
+                                          type=str(att.get("type") or "")[:60],
+                                          size=int(att.get("size") or 0),
+                                          is_image=bool(att.get("is_image")),
+                                          is_video=bool(att.get("is_video"))))
+                    if not clean:
+                        return self._send(400, {"error": "Не удалось прочитать вложение"})
+                    meta = dict(meta)
+                    meta["attachments"] = clean
                 if not text and kind == "text":
                     return self._send(400, {"error": "Пустое сообщение"})
                 reply_to = body.get("reply_to")
@@ -3327,11 +3663,21 @@ class Handler(BaseHTTPRequestHandler):
                                  (text, now_iso(), int(mid)))
                     conn.commit()
                     return self._send(200, dict(ok=True, id=int(mid)))
+                mentions = extract_mentions(conn, chat_id, text)
+                if mentions:
+                    meta = dict(meta or {})
+                    meta["mentions"] = mentions
                 cur = conn.execute(
                     "INSERT INTO group_messages (chat_id, user_id, text, kind, meta, reply_to, created_at) "
                     "VALUES (?,?,?,?,?,?,?)",
                     (chat_id, uid, text, kind, json.dumps(meta, ensure_ascii=False), reply_to, now_iso()))
                 mid = cur.lastrowid
+                for mn in mentions:
+                    if mn["user_id"] == uid:
+                        continue
+                    push_async(mn["user_id"], dict(
+                        title=f"{user['nickname']} упомянул тебя · {group_title(conn, g)}",
+                        body=(text or "")[:140], url="/?view=chats", tag=f"group-{chat_id}"))
                 conn.execute("UPDATE group_chats SET updated_at = ? WHERE id = ?", (now_iso(), chat_id))
                 conn.execute("UPDATE group_members SET last_read_at = ? WHERE chat_id = ? AND user_id = ?",
                              (now_iso(), chat_id, uid))
@@ -3448,8 +3794,22 @@ class Handler(BaseHTTPRequestHandler):
                 options = meta.get("options") or []
                 if not (0 <= choice < len(options)):
                     return self._send(400, {"error": "Такого варианта нет"})
+                if poll_expired(meta):
+                    return self._send(400, {"error": "Опрос закрыт по времени"})
                 multi = bool(meta.get("multi"))
-                if not multi:
+                if multi:
+                    # несколько вариантов: повторное нажатие снимает голос
+                    had = conn.execute("SELECT 1 FROM poll_votes WHERE chat_kind = 'group' AND chat_id = ? "
+                                       "AND message_id = ? AND user_id = ? AND choice = ?",
+                                       (chat_id, mid, uid, choice)).fetchone()
+                    if had:
+                        conn.execute("DELETE FROM poll_votes WHERE chat_kind = 'group' AND chat_id = ? "
+                                     "AND message_id = ? AND user_id = ? AND choice = ?",
+                                     (chat_id, mid, uid, choice))
+                        conn.commit()
+                        return self._send(200, dict(ok=True, removed=True,
+                                                    poll=poll_state(conn, "group", chat_id, mid, meta, uid)))
+                else:
                     conn.execute("DELETE FROM poll_votes WHERE chat_kind = 'group' AND chat_id = ? AND message_id = ? "
                                  "AND user_id = ?", (chat_id, mid, uid))
                 conn.execute("INSERT OR IGNORE INTO poll_votes (chat_kind, chat_id, message_id, user_id, choice, "
@@ -3654,6 +4014,73 @@ class Handler(BaseHTTPRequestHandler):
             conn.commit()
             return self._send(200, dict(ok=True))
 
+        # --- тиммейты: «играли вместе» и добавление в свой список ---
+        if path == "/api/teammates" and method == "GET":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            items = []
+            rows = conn.execute("SELECT * FROM teammates WHERE user_id = ? ORDER BY id DESC LIMIT 200",
+                                (uid,)).fetchall()
+            played = conn.execute("SELECT * FROM party_sessions ORDER BY id DESC LIMIT 200").fetchall()
+            for r in rows:
+                mate = r["mate_user_id"]
+                if not mate or is_blocked_between(conn, uid, mate):
+                    continue
+                back = conn.execute("SELECT 1 FROM teammates WHERE user_id = ? AND mate_user_id = ?",
+                                    (mate, uid)).fetchone()
+                shared = 0
+                last_game = None
+                for ps in played:
+                    mem = json.loads(ps["members"] or "[]")
+                    ids = [m.get("user_id") for m in mem]
+                    if uid in ids and mate in ids:
+                        shared += 1
+                        if not last_game:
+                            last_game = ps["game_id"]
+                g = GAME_BY_ID.get(last_game) if last_game else None
+                p = user_presence(conn, mate)
+                items.append(dict(
+                    nick=p.get("nick") or user_display(conn, mate), user_key=mate[:8],
+                    avatar=p.get("avatar") or "", mutual=bool(back), added_at=r["created_at"],
+                    sessions_together=shared, online=(p.get("state") != "offline"),
+                    status=p.get("label") or "",
+                    game_name=(g["name"] if g else ""), game_short=(g["short"] if g else "")))
+            return self._send(200, dict(items=items))
+
+        if path == "/api/teammates" and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            body = self._json_body()
+            nick = (body.get("nick") or "").strip()[:64]
+            mate = resolve_user_key(conn, nick)
+            if not mate:
+                return self._send(404, {"error": "Игрок не найден или у него нет аккаунта"})
+            if mate == uid:
+                return self._send(400, {"error": "Это ты"})
+            if is_blocked_between(conn, uid, mate):
+                return self._send(403, {"error": "Недоступно"})
+            conn.execute("INSERT OR IGNORE INTO teammates (user_id, mate_user_id, note, created_at) "
+                         "VALUES (?,?,?,?)", (uid, mate, (body.get("note") or "")[:200], now_iso()))
+            conn.commit()
+            back = conn.execute("SELECT 1 FROM teammates WHERE user_id = ? AND mate_user_id = ?",
+                                (mate, uid)).fetchone()
+            push_async(mate, dict(title="Ты в списке тиммейтов",
+                                  body=f"{user['nickname']} добавил тебя в тиммейты",
+                                  url="/?view=chats", tag=f"mate-{uid}"))
+            total = conn.execute("SELECT COUNT(*) c FROM teammates WHERE user_id = ?", (uid,)).fetchone()["c"]
+            return self._send(200, dict(ok=True, mutual=bool(back),
+                                        nick=user_display(conn, mate), mates_total=total))
+
+        m = re.match(r"^/api/teammates/(.+)$", path)
+        if m and method == "DELETE":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            mate = resolve_user_key(conn, unquote(m.group(1)))
+            if mate:
+                conn.execute("DELETE FROM teammates WHERE user_id = ? AND mate_user_id = ?", (uid, mate))
+                conn.commit()
+            return self._send(200, dict(ok=True))
+
         # --- история сессий и «играть снова» ---
         if path == "/api/sessions" and method == "GET":
             if not user:
@@ -3679,7 +4106,15 @@ class Handler(BaseHTTPRequestHandler):
                                 minutes=minutes, started_at=started, ended_at=ended,
                                 finished=bool(ended), players=len(members),
                                 members=[dict(user_id=m.get("user_id"), nick=m.get("nick"),
-                                              is_me=(m.get("user_id") == uid)) for m in members]))
+                                              is_me=(m.get("user_id") == uid),
+                                              is_teammate=bool(m.get("user_id") and conn.execute(
+                                                  "SELECT 1 FROM teammates WHERE user_id = ? AND mate_user_id = ?",
+                                                  (uid, m.get("user_id"))).fetchone()),
+                                              can_add=bool(m.get("user_id") and m.get("user_id") != uid and not conn.execute(
+                                                  "SELECT 1 FROM teammates WHERE user_id = ? AND mate_user_id = ?",
+                                                  (uid, m.get("user_id"))).fetchone() and not is_blocked_between(
+                                                  conn, uid, m.get("user_id"))))
+                                              for m in members]))
             return self._send(200, dict(items=out[:30]))
 
         m = re.match(r"^/api/sessions/(\d+)/play-again$", path)

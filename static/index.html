@@ -558,6 +558,47 @@
  .actions{flex-wrap:wrap}
  .results-info{font-size:12.8px}
  }
+/* ======================= чат 1.10: медиа, упоминания, карточки игроков ======================= */
+.atts{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-width:420px}
+.att-img img{max-width:100%;max-height:320px;border-radius:12px;border:1px solid var(--border);display:block}
+.att-video{max-width:100%;border-radius:12px;border:1px solid var(--border)}
+.att-file{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:11px;padding:9px 12px;color:var(--text);text-decoration:none}
+.att-file b{font-size:13.5px;font-weight:600}
+.att-file span{font-size:12px;color:var(--muted);margin-left:auto}
+.mention{background:var(--acc-soft);border:1px solid var(--acc-line);border-radius:7px;padding:0 5px;color:var(--acc-2)}
+.mention.me{color:#ffd7a8;border-color:rgba(255,138,61,.5)}
+.uc-card{position:fixed;z-index:70;width:290px;background:var(--panel);border:1px solid var(--border-strong);
+  border-radius:16px;padding:14px;box-shadow:0 18px 44px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:8px}
+.uc-top{display:flex;gap:10px;align-items:center}
+.uc-top b{font-size:15px}
+.uc-top span{font-size:12.5px;color:var(--muted);display:block}
+.uc-rows{display:flex;gap:6px;flex-wrap:wrap}
+.uc-rows span{font-size:12px;color:var(--acc-2);border:1px solid var(--acc-line);border-radius:8px;padding:2px 8px;background:var(--acc-soft)}
+.uc-tags{display:flex;gap:6px;flex-wrap:wrap}
+.uc-tags span{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:2px 8px}
+.uc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.mate-list{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.mate-row{display:flex;align-items:center;gap:8px;font-size:13.5px;justify-content:space-between}
+.mate-row em{color:var(--muted);font-size:12.5px;font-style:normal}
+.bc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.mention-pop{position:fixed;z-index:70;background:var(--panel);border:1px solid var(--border-strong);border-radius:12px;
+  padding:6px;display:flex;flex-direction:column;min-width:180px;box-shadow:0 14px 34px rgba(0,0,0,.5)}
+.mention-pop button{background:transparent;border:0;color:var(--text);text-align:left;padding:8px 10px;border-radius:9px;font-size:13.5px;cursor:pointer}
+.mention-pop button:hover{background:rgba(255,255,255,.07)}
+.gsearch{display:flex;flex-direction:column;gap:10px}
+.gsearch .row{display:flex;gap:8px}
+.gsearch input{flex:1;min-width:0}
+.gsearch .tabs{display:flex;gap:6px;flex-wrap:wrap}
+.gsearch .tabs button{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;color:var(--muted);padding:6px 10px;font-size:12.5px;cursor:pointer}
+.gsearch .tabs button.on{border-color:var(--acc-line);color:var(--acc-2);background:var(--acc-soft)}
+.gs-group{margin-top:12px}
+.gs-group h4{font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.gs-hit{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:11px;padding:8px 11px;margin-bottom:6px;cursor:pointer}
+.gs-hit b{font-size:12.5px;color:var(--acc-2)}
+.gs-hit span{display:block;font-size:13px;color:var(--text);word-break:break-word}
+.read-line{font-size:11.5px;color:var(--muted);margin-top:2px}
+.read-line button{background:transparent;border:0;color:var(--acc-2);cursor:pointer;font-size:11.5px;font-family:inherit}
 /* ======================= чат 1.9: пати, группы, карточки ======================= */
 /* три колонки (список — чат — панель) только на широком экране:
    на телефоне действует правило «список и диалог по очереди» */
@@ -797,6 +838,8 @@
  <div class="page-sub">Личные диалоги, группы и пати. Ответ приходит за секунды — даже если приложение закрыто, придёт уведомление.</div>
  </div>
  <div class="chat-head-actions">
+ <button class="btn sm ghost" onclick="openGlobalSearch()">Поиск</button>
+ <button class="btn sm ghost" onclick="openTeammates()">Тиммейты</button>
  <button class="btn sm ghost" onclick="openSessions()">Сессии</button>
  <button class="btn sm" onclick="openLfgBoard()">Найти игроков</button>
  <button class="btn sm primary" onclick="openCreateParty()">Собрать пати</button>
@@ -2697,8 +2740,9 @@ function renderChatWindow() {
     <div class="msgs" id="msgs"></div>
     <button class="btn sm primary jump-down" id="jumpDown" onclick="scrollToBottom(true)">Вниз</button>
     <div id="readyBlock" class="ready-block" style="display:none"></div>
-    <div class="composer-wrap">
+      <div class="composer-wrap">
       <div id="composerBanner"></div>
+      <div class="mention-pop" id="mentionPop" style="display:none"></div>
       <div class="quick-chips" id="quickChips"></div>
       <div class="composer">
         <button class="btn sm plus-btn" id="plusBtn" onclick="openPlusMenu(event)" title="Что добавить">+</button>
@@ -2711,7 +2755,9 @@ function renderChatWindow() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     if (e.key === 'Escape') { cancelReply(); cancelEdit(); }
   });
-  ta.addEventListener('input', () => { autoGrow(ta); noteTyping(); });
+  ta.addEventListener('input', () => { autoGrow(ta); noteTyping(); maybeShowMentionPop(); });
+  ta.addEventListener('keyup', maybeShowMentionPop);
+  ta.addEventListener('blur', () => setTimeout(() => { const pop = $('#mentionPop'); if (pop) { pop.style.display = 'none'; } }, 250));
   $('#msgs').addEventListener('scroll', () => {
     const box = $('#msgs');
     const far = box.scrollHeight - box.scrollTop - box.clientHeight > 160;
@@ -2733,6 +2779,7 @@ function dmHeadHtml(c) {
     <button class="btn sm ghost desk-only" onclick="inviteToParty(${JSON.stringify(c.title || '')})">В пати</button>
     <button class="btn sm ghost desk-only" onclick="startVoiceSoon()" title="Голосовой чат">Голос</button>
     <button class="btn sm ghost desk-only" onclick="toggleChatSearch()" title="Поиск по переписке"><span class="search-label">Поиск</span></button>
+    <button class="btn sm ghost" onclick="openGlobalSearch()" title="Поиск по сообщениям, игрокам и файлам">Найти</button>
     <button class="btn sm ghost" onclick="openConvMenu(event)" title="Ещё">Ещё</button>
   </div>`;
 }
@@ -2755,6 +2802,7 @@ function groupHeadHtml(c) {
     <button class="btn sm ghost desk-only" onclick="startVoiceSoon()" title="Голосовой чат">Голос</button>
     <button class="btn sm ghost desk-only" onclick="toggleChatSearch()" title="Поиск по переписке"><span class="search-label">Поиск</span></button>
     <button class="btn sm ghost desk-only" onclick="togglePanel()" title="Участники, закреплённые, ссылки">Панель</button>
+    <button class="btn sm ghost desk-only" onclick="openGlobalSearch()" title="Поиск по сообщениям, игрокам и файлам">Найти</button>
     <button class="btn sm ghost" onclick="openConvMenu(event)" title="Ещё">Ещё</button>
   </div>`;
 }
@@ -2839,6 +2887,7 @@ async function fetchMessages(scroll = false, all = false) {
     }
     renderReadyBlock();
     renderMembers();
+    renderQuickChips();   // быстрые действия пати появляются, когда состав уже загружен
   }
   renderMessages(isGroup() ? (data.typing_names || []) : (data.typing ? conv().title : ''));
   const total = state.inbox ? state.inbox.reduce((s, c) => s + (c.unread || 0), 0) : 0;
@@ -2909,12 +2958,12 @@ function msgRowHtml(m, prev) {
     <button onclick="openMsgMenu(${m.id}, event.clientX, event.clientY)" title="Ещё">...</button>
   </div>`;
   const record = m.sender === 'me' && !m.deleted
-    ? `<span class="record">${m.read ? 'прочитано' : 'отправлено'}</span>` : '';
+    ? `<span class="record">${m.read ? 'прочитано' : 'отправлено'}</span>${groupReadLine(m)}` : '';
   return `${sep}
-  <div class="msg-row ${grouped ? 'grouped' : ''} ${m.pinned ? 'pinned' : ''}" data-id="${m.id}"
+  <div class="msg-row ${m.sender === 'me' ? 'me' : 'peer'} ${grouped ? 'grouped' : ''} ${m.pinned ? 'pinned' : ''}" data-id="${m.id}"
     oncontextmenu="event.preventDefault();openMsgMenu(${m.id}, event.clientX, event.clientY)"
     ontouchstart="msgTouchStart(event, ${m.id})" ontouchend="msgTouchEnd()">
-    <div class="mv">${grouped ? '' : avatarHtml(nick, avatarUrl, 'avatar')}</div>
+    <div class="mv">${grouped ? '' : `<span class="av-click" onclick="openUserCard('${esc(m.sender === 'me' ? (state.me ? state.me.nickname : '') : nick)}', event)">${avatarHtml(nick, avatarUrl, 'avatar')}</span>`}</div>
     <div class="msg-main">${head}${quote}${body}${record}${reactionsHtml(m)}</div>
     ${tools}
   </div>`;
@@ -2925,7 +2974,10 @@ function cardOrText(m) {
   if (m.kind === 'lfg') return lfgCardHtml(m);
   if (m.kind === 'invite') return inviteCardHtml(m);
   if (m.kind === 'poll') return pollCardHtml(m);
-  return `<div class="msg-text">${esc(m.text)}</div>`;
+  if (m.kind === 'media') {
+    return (m.text ? `<div class="msg-text">${highlightMentions(m.text)}</div>` : '') + attachmentsHtml(m);
+  }
+  return `<div class="msg-text">${highlightMentions(m.text)}</div>`;
 }
 
 function lfgCardHtml(m) {
@@ -2976,7 +3028,9 @@ function pollCardHtml(m) {
         <span class="po-text">${esc(opt)}</span>
         <span class="po-count">${v}</span></button>`;
     }).join('')}
-    <div class="cp-foot">Всего голосов: ${p.total || 0}${p.my_choice != null ? ' · ты проголосовал' : ''}</div>
+    <div class="cp-foot">Всего голосов: ${p.total || 0}${p.my_choice != null ? ' · ты проголосовал' : ''}
+      ${p.multi ? ' · можно выбрать несколько' : ''}
+      ${p.deadline ? (p.expired ? ' · опрос закрыт' : ' · до ' + clock(p.deadline)) : ''}</div>
   </div>`;
 }
 
@@ -2986,6 +3040,24 @@ function reactionsHtml(m) {
   return `<div class="rx-row">${list.map(r =>
     `<button class="rx-chip ${r.mine ? 'mine' : ''}" onclick="toggleReaction(${m.id}, '${esc(r.value)}')">
       ${esc(r.value)} <b>${r.count}</b></button>`).join('')}</div>`;
+}
+
+function groupReadLine(m) {
+  if (!isGroup() || m.sender !== 'me' || m.deleted) return '';
+  const members = (state.party ? state.party.members : (state.members || [])).filter(x => !x.is_me);
+  if (!members.length) return '';
+  const list = members.map(x => ({ nick: x.nick, read: (x.last_read_at || '') >= m.created_at }));
+  const read = list.filter(x => x.read).length;
+  return `<div class="read-line">Прочитано ${read} из ${list.length}
+    <button onclick="showReaders(${m.id})">кто именно</button></div>`;
+}
+
+function showReaders(messageId) {
+  const m = state.msgById.get(messageId);
+  if (!m) return;
+  const members = (state.party ? state.party.members : (state.members || [])).filter(x => !x.is_me);
+  const lines = members.map(x => `${x.nick} — ${(x.last_read_at || '') >= m.created_at ? 'прочитал' : 'ещё не прочитал'}`);
+  toast('Прочтение сообщения:<br>' + lines.map(esc).join('<br>'));
 }
 
 /* долгое нажатие на телефоне — то же меню */
@@ -3110,8 +3182,36 @@ function closeMsgMenu() { const m = $('#msgMenu'); if (m) m.remove(); }
 /* ---------- композер: быстрые фразы, «+», отправка ---------- */
 function renderQuickChips() {
   const box = $('#quickChips'); if (!box) return;
-  box.innerHTML = QUICK_PHRASES.map(p =>
-    `<button class="chip" onclick="quickPhrase('${esc(p)}')">${esc(p)}</button>`).join('');
+  const chips = [];
+  if (isGroup() && state.party) {
+    chips.push(`<button class="chip act" onclick="setReady(${!myReady()})">${myReady() ? 'Снять готовность' : 'Готов'}</button>`);
+    chips.push('<button class="chip act" onclick="quickNeedOne()">Нужен 1</button>');
+    if (state.party.is_leader && state.party.status === 'open') {
+      chips.push('<button class="chip act" onclick="startPartyGame()">Начать игру</button>');
+    }
+    if (state.party.is_member) chips.push('<button class="chip act" onclick="leaveParty()">Выйти из пати</button>');
+    if (state.party.status === 'open' && state.party.is_leader) {
+      chips.push('<button class="chip act" onclick="closeParty()">Завершить сессию</button>');
+    }
+  }
+  QUICK_PHRASES.forEach(p => chips.push(`<button class="chip" onclick="quickPhrase('${esc(p)}')">${esc(p)}</button>`));
+  box.innerHTML = chips.join('');
+}
+/* «Нужен 1» — сразу карточка поиска игроков на одного человека */
+async function quickNeedOne() {
+  const p = state.party;
+  if (!p) return;
+  const free = Math.max(1, p.size - p.players);
+  try {
+    await api('/api/lfg', { method: 'POST', body: {
+      game_id: p.game_id, mode: p.mode || '', rank: p.rank || '', region: p.region || '',
+      lang: p.lang || '', need: free, size: p.size, mic: p.mic,
+      note: 'нужен ещё ' + free + ' игрок', chat_kind: 'group', chat_id: state.activeChat,
+    } });
+    toast('Карточка поиска игроков обновлена');
+    await fetchMessages(false, true);
+    loadAside();
+  } catch (e) { toast(esc(e.message), 'err'); }
 }
 function quickPhrase(text) {
   const ta = $('#msgInput'); if (!ta) return;
@@ -3124,6 +3224,8 @@ function openPlusMenu(ev) {
   const menu = document.createElement('div');
   menu.className = 'plus-menu'; menu.id = 'msgMenu';
   const items = [
+    ['Скриншот или фото', () => pickUpload('image/*')],
+    ['Клип или файл', () => pickUpload('*/*')],
     ['Найти игроков', () => openLfgForm()],
     ['Приглашение в игру', () => openGameInviteForm()],
   ];
@@ -3312,7 +3414,7 @@ function asideBodyHtml() {
   const leaderId = state.party ? state.party.leader_user_id : null;
   return `<div class="members-list">${members.map(m => `
     <div class="member-row">
-      ${avatarHtml(m.nick, m.avatar, 'avatar sm')}
+      <span class="av-click" onclick="openUserCard('${esc(m.nick)}', event)">${avatarHtml(m.nick, m.avatar, 'avatar sm')}</span>
       <div class="mr-main">
         <b>${esc(m.nick)}${m.is_me ? ' (ты)' : ''}${leaderId === m.user_id ? ' · лидер' : ''}</b>
         <span>${esc(PRESENCE_WORD[m.state] || '')}${state.party && state.party.status === 'open' ? ' · ' + (m.ready ? 'готов' : 'ждём') : ''}</span>
@@ -3470,7 +3572,9 @@ function openConvMenu(ev) {
   if (isGroup() && state.party) items.push(['Позвать в пати', () => openPartyInvite()]);
   if (!isGroup()) items.push(['Позвать в пати', () => inviteToParty(c.title || '')]);
   items.push(['Голосовой чат', () => startVoiceSoon()]);
-  items.push(['Поиск по переписке', () => toggleChatSearch()]);
+  items.push(['Тиммейты', () => openTeammates()]);
+  items.push(['Поиск по всей переписке', () => openGlobalSearch()]);
+  items.push(['Отправить файл или скриншот', () => pickUpload('*/*')]);
   if (isGroup()) items.push(['Панель участников', () => togglePanel()]);
   items.push(
     ['Без звука на 1 час', () => muteConv(60)],
@@ -3615,6 +3719,11 @@ function openPollForm() {
       <textarea class="inp" id="pollOpts" rows="4">19:00
 20:00
 21:00</textarea>
+      <label class="lbl" style="margin-top:12px">Собирать до (по желанию)</label>
+      <input class="inp" id="pollDeadline" type="datetime-local">
+      <div class="chips-wrap" style="margin-top:12px">
+        <button class="chip" id="pollMulti" data-on="0" onclick="toggleChip(this)">Можно выбрать несколько</button>
+      </div>
       <button class="btn primary" style="width:100%;margin-top:14px" onclick="submitPoll()">Создать опрос</button>
     </div>`);
 }
@@ -3622,13 +3731,19 @@ async function submitPoll() {
   const q = ($('#pollQ').value || '').trim();
   const options = ($('#pollOpts').value || '').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 8);
   if (!q || options.length < 2) { toast('Нужен вопрос и хотя бы два варианта', 'err'); return; }
+  const multi = $('#pollMulti') && $('#pollMulti').dataset.on === '1';
+  const dlRaw = $('#pollDeadline') ? $('#pollDeadline').value : '';
+  const deadline = dlRaw ? new Date(dlRaw).toISOString().replace('Z', '+00:00') : null;
   try {
-    await api(convUrl('messages'), { method: 'POST', body: { kind: 'poll', text: q, meta: { question: q, options } } });
+    await api(convUrl('messages'), { method: 'POST', body: { kind: 'poll', text: q,
+      meta: { question: q, options, multi, deadline } } });
     closeModal();
     await fetchMessages(false, true);
   } catch (e) { toast(esc(e.message), 'err'); }
 }
 async function votePoll(id, choice) {
+  const m = state.msgById.get(id);
+  if (m && m.poll && m.poll.expired) { toast('Опрос закрыт по времени', 'err'); return; }
   try {
     await api(convUrl('messages/' + id + '/vote'), { method: 'POST', body: { choice } });
     await fetchMessages(false, true);
@@ -3690,7 +3805,184 @@ async function submitCreateParty() {
   } catch (e) { toast(esc(e.message), 'err'); }
 }
 
-/* ---------- голос: честно говорим, что сервер звука ещё не включён ---------- */
+/* ---------- карточка игрока: по клику на аватар ---------- */
+async function openUserCard(nick, ev) {
+  if (!nick) return;
+  closeUserCard();
+  if (ev) ev.stopPropagation();
+  let data;
+  try {
+    data = await api('/api/users/' + encodeURIComponent(nick) + '/card');
+  } catch (e) { toast(esc(e.message), 'err'); return; }
+  const c = data.card || {};
+  const box = document.createElement('div');
+  box.className = 'uc-card';
+  box.id = 'userCard';
+  const games = (c.games || []).map(g => `<span>${esc(g.short || g.name)}${g.rank ? ' · ' + esc(g.rank) : ''}</span>`).join('');
+  const tags = (c.tags || []).map(t => `<span>${esc(t)}</span>`).join('');
+  box.innerHTML = `
+    <div class="uc-top">
+      ${avatarHtml(c.nick, c.avatar, 'avatar')}
+      <div style="flex:1;min-width:0">
+        <b>${esc(c.nick)}</b>
+        <span>${esc(c.label || '')}${c.listing_id ? '' : ' · без анкеты'}</span>
+      </div>
+    </div>
+    ${c.rating ? `<div class="hint">Рейтинг ${Number(c.rating).toFixed(1)} · отзывов ${c.reviews_count || 0}${c.region_label ? ' · ' + esc(c.region_label) : ''}</div>` : ''}
+    ${games ? `<div class="uc-rows">${games}</div>` : ''}
+    ${tags ? `<div class="uc-tags">${tags}</div>` : ''}
+    ${c.about ? `<div class="hint">${esc(c.about)}</div>` : ''}
+    ${c.is_me ? '<div class="hint">Это твоя карточка.</div>' : c.blocked ? '<div class="hint">Игрок в блокировке.</div>' : `<div class="uc-actions">
+      <button class="btn sm primary" onclick="addTeammate('${esc(c.nick)}', this)">В тиммейты</button>
+      <button class="btn sm ghost" onclick="closeUserCard();inviteToParty(${JSON.stringify(c.nick)})">В пати</button>
+      ${c.listing_id ? `<button class="btn sm ghost" onclick="closeUserCard();openProfile(${c.listing_id})">Профиль</button>` : ''}
+      <button class="btn sm ghost" onclick="closeUserCard();writeToPlayer('${esc(c.nick)}')">Написать</button>
+    </div>`}`;
+  const r = ev && ev.target ? ev.target.getBoundingClientRect() : { left: 40, bottom: 300 };
+  box.style.left = Math.max(10, Math.min(r.left, window.innerWidth - 310)) + 'px';
+  box.style.top = Math.max(10, Math.min(r.bottom + 8, window.innerHeight - 320)) + 'px';
+  document.body.appendChild(box);
+  setTimeout(() => document.addEventListener('click', closeUserCard, { once: true }), 30);
+}
+function closeUserCard() { const b = $('#userCard'); if (b) b.remove(); }
+
+/* написать игроку: открываем существующий диалог или создаём через приглашение */
+async function writeToPlayer(nick) {
+  const known = (state.inbox || []).find(c => c.type === 'dm' && c.title === nick);
+  if (known) { go('chats'); await openConv('dm', known.id); return; }
+  try {
+    const d = await api('/api/players?q=' + encodeURIComponent(nick));
+    const found = (d.items || []).find(p => p.nick === nick);
+    if (!found) { toast('Анкета не найдена — пригласи игрока ссылкой', 'err'); return; }
+    const res = await api('/api/invite', { method: 'POST', body: { listing_id: found.id, text: 'Привет! Давай сыграем?' } });
+    go('chats');
+    await loadChats();
+    await openConv('dm', res.chat_id);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- медиа: скриншоты, клипы, файлы ---------- */
+function pickUpload(accept) {
+  closeMsgMenu();
+  let input = $('#uploadInput');
+  if (!input) {
+    input = document.createElement('input');
+    input.type = 'file';
+    input.id = 'uploadInput';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+  }
+  input.accept = accept;
+  input.value = '';
+  input.onchange = () => {
+    const file = input.files && input.files[0];
+    if (file) uploadAndSend(file);
+  };
+  input.click();
+}
+
+async function uploadAndSend(file) {
+  const id = state.activeChat;
+  if (!id) return;
+  const limitMb = 8;
+  if (file.size > limitMb * 1024 * 1024) {
+    toast('Файл больше ' + limitMb + ' МБ — пришли ссылку', 'err');
+    return;
+  }
+  const form = new FormData();
+  form.append('file', file, file.name);
+  toast('Отправляю файл...');
+  let data;
+  try {
+    const resp = await fetch('/api/uploads', {
+      method: 'POST',
+      headers: state.token ? { 'X-Token': state.token } : {},
+      body: form,
+    });
+    data = await resp.json();
+    if (!resp.ok || !data.url) throw new Error(data.error || 'Не получилось загрузить файл');
+  } catch (e) {
+    toast(esc(e.message), 'err');
+    return;
+  }
+  const payload = { kind: 'media', text: '', meta: { attachments: [{
+    url: data.url, name: data.name, type: data.type, size: data.size,
+    is_image: data.is_image, is_video: data.is_video }] } };
+  try {
+    await api(convUrl('messages'), { method: 'POST', body: payload });
+    await fetchMessages(false, true);
+    loadChats();
+    if (isGroup()) loadAside();
+    toast('Файл отправлен');
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+function fmtSize(bytes) {
+  const b = Number(bytes) || 0;
+  if (b < 1024) return b + ' Б';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' КБ';
+  return (b / 1024 / 1024).toFixed(1) + ' МБ';
+}
+
+function attachmentsHtml(m) {
+  const atts = (m.meta && m.meta.attachments) || [];
+  if (!atts.length) return '';
+  return '<div class="atts">' + atts.map(a => {
+    if (a.is_image) {
+      return `<a class="att-img" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">
+        <img src="${esc(a.url)}" alt="${esc(a.name)}" loading="lazy"></a>`;
+    }
+    if (a.is_video) return `<video class="att-video" src="${esc(a.url)}" controls preload="metadata"></video>`;
+    return `<a class="att-file" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">
+      <b>${esc(a.name)}</b><span>${fmtSize(a.size)}</span></a>`;
+  }).join('') + '</div>';
+}
+
+/* упоминания: подсветка и подсказка при вводе @ */
+function groupMemberNicks() {
+  const list = (state.party ? state.party.members : (state.members || [])) || [];
+  return list.filter(m => m.nick).map(m => ({ nick: m.nick, is_me: m.is_me }));
+}
+
+function highlightMentions(text) {
+  let out = esc(text || '');
+  if (!isGroup()) return out;
+  groupMemberNicks().forEach(m => {
+    const safe = esc(m.nick).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp('@' + safe, 'g'),
+      `<span class="mention${m.is_me ? ' me' : ''}">@${esc(m.nick)}</span>`);
+  });
+  return out;
+}
+
+function maybeShowMentionPop() {
+  const ta = $('#msgInput');
+  if (!ta || !isGroup()) return;
+  const before = ta.value.slice(0, ta.selectionStart);
+  const m = before.match(/(?:^|\s)@([A-Za-zА-Яа-я0-9_]{1,32})$/);
+  const pop = $('#mentionPop');
+  if (!pop) return;
+  const hide = () => { pop.style.display = 'none'; pop.innerHTML = ''; };
+  if (!m) { hide(); return; }
+  const q = m[1].toLowerCase();
+  const hits = groupMemberNicks().filter(x => x.nick.toLowerCase().startsWith(q) && !x.is_me).slice(0, 6);
+  if (!hits.length) { hide(); return; }
+  pop.innerHTML = hits.map(h => `<button type="button" data-nick="${esc(h.nick)}">@${esc(h.nick)}</button>`).join('');
+  const r = ta.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 220)) + 'px';
+  pop.style.top = Math.max(60, r.top - 12 - hits.length * 38) + 'px';
+  pop.style.display = 'flex';
+  pop.querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => {
+      const nick = btn.dataset.nick;
+      const start = ta.selectionStart - m[1].length - 1;
+      ta.value = ta.value.slice(0, start) + '@' + nick + ' ' + ta.value.slice(ta.selectionStart);
+      hide();
+      noteTyping();
+      ta.focus();
+    };
+  });
+}
 function startVoiceSoon() {
   openModal(`<div class="modal-head"><h3>Голосовой чат</h3>
     <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
@@ -3701,6 +3993,141 @@ function startVoiceSoon() {
       и «Начать игру» — состав собирается целиком в чате.</p>
       <button class="btn ghost" style="width:100%;margin-top:8px" onclick="closeModal();openLfgForm()">Найти игроков сейчас</button>
     </div>`);
+}
+
+/* ---------- тиммейты: те, с кем играли, и кого добавили сами ---------- */
+async function addTeammate(nick, btn) {
+  try {
+    const d = await api('/api/teammates', { method: 'POST', body: { nick } });
+    toast(d.mutual ? `${esc(nick)} — взаимный тиммейт` : `${esc(nick)} добавлен в тиммейты`);
+    if (btn) { btn.textContent = 'уже тиммейт'; btn.disabled = true; }
+    state.mates = null;
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function removeTeammate(nick, btn) {
+  try {
+    await api('/api/teammates/' + encodeURIComponent(nick), { method: 'DELETE' });
+    toast('Убрал из тиммейтов');
+    state.mates = null;
+    if (btn && btn.closest('.mate-card')) btn.closest('.mate-card').remove();
+    else openTeammates();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function openTeammates() {
+  openModal(`<div class="modal-head"><h3>Тиммейты</h3>
+    <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+    <div class="modal-body" id="matesBox">Загрузка…</div>`);
+  const box = $('#matesBox');
+  try {
+    const d = await api('/api/teammates');
+    state.mates = d.items;
+    if (!d.items.length) {
+      box.innerHTML = `<div class="hint">Пока никого. Соберите пати, сыграйте — и добавь состав в тиммейты
+        прямо из истории сессий или из карточки игрока (клик по аватару в чате).</div>`;
+      return;
+    }
+    const online = d.items.filter(m => m.online).length;
+    box.innerHTML = `<div class="hint">Всего: ${d.items.length} · сейчас в сети: ${online}</div>` +
+      d.items.map(m => `<div class="board-card mate-card">
+        <div class="bc-top"><b>${esc(m.nick)}</b><span>${esc(m.mutual ? 'взаимно' : m.status || '')}</span></div>
+        <div class="bc-rows">
+          <span>${esc(m.online ? 'онлайн' : 'офлайн')}</span>
+          ${m.sessions_together ? `<span>сессий вместе: ${m.sessions_together}</span>` : ''}
+          ${m.game_short ? `<span>${esc(m.game_short)}</span>` : ''}
+        </div>
+        <div class="bc-actions">
+          <button class="btn sm primary" onclick="closeModal();writeToPlayer('${esc(m.nick)}')">Написать</button>
+          <button class="btn sm ghost" onclick="closeModal();openUserCard('${esc(m.nick)}')">Карточка</button>
+          <button class="btn sm ghost" onclick="removeTeammate('${esc(m.nick)}', this)">Убрать</button>
+        </div>
+      </div>`).join('');
+  } catch (e) { box.innerHTML = `<div class="hint">${esc(e.message)}</div>`; }
+}
+
+/* ---------- общий поиск: сообщения, игроки, файлы, ссылки ---------- */
+function openGlobalSearch(preset) {
+  openModal(`<div class="modal-head"><h3>Поиск</h3>
+    <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+    <div class="modal-body gsearch">
+      <div class="row">
+        <input class="inp" id="gsQuery" placeholder="Что ищем? Например: го катку, from:Ник, game:CS2"
+               value="${esc(preset || '')}">
+        <button class="btn primary" onclick="runGlobalSearch()">Найти</button>
+      </div>
+      <div class="tabs" id="gsTabs">
+        <button data-k="all" class="on" onclick="gsTab('all')">Всё</button>
+        <button data-k="messages" onclick="gsTab('messages')">Сообщения</button>
+        <button data-k="players" onclick="gsTab('players')">Игроки</button>
+        <button data-k="files" onclick="gsTab('files')">Файлы</button>
+        <button data-k="links" onclick="gsTab('links')">Ссылки</button>
+      </div>
+      <div class="hint">Можно писать условия прямо в строке: <b>from:Ник</b> — только его сообщения,
+        <b>game:CS2</b> — только по игре.</div>
+      <div id="gsResults"></div>
+    </div>`);
+  const q = $('#gsQuery');
+  q.addEventListener('keydown', e => { if (e.key === 'Enter') runGlobalSearch(); });
+  q.focus();
+  if (preset) runGlobalSearch();
+}
+function gsTab(kind) {
+  state.gsKind = kind;
+  document.querySelectorAll('#gsTabs button').forEach(b => b.classList.toggle('on', b.dataset.k === kind));
+  runGlobalSearch();
+}
+async function runGlobalSearch() {
+  const box = $('#gsResults');
+  if (!box) return;
+  const q = ($('#gsQuery').value || '').trim();
+  if (q.length < 2) { box.innerHTML = '<div class="hint">Введи хотя бы два символа.</div>'; return; }
+  box.innerHTML = '<div class="spin"></div>';
+  try {
+    const d = await api('/api/search?q=' + encodeURIComponent(q) + '&kind=' + (state.gsKind || 'all'));
+    const r = d.results || {};
+    const parts = [];
+    if (r.players && r.players.length) {
+      parts.push(`<div class="gs-group"><h4>Игроки</h4>${r.players.map(p => `
+        <div class="gs-hit" onclick="closeModal();openProfile(${p.listing_id})">
+          <b>${esc(p.nick)}${p.rating ? ' · ' + Number(p.rating).toFixed(1) : ''}</b>
+          <span>${esc((p.games || []).join(' · '))}${p.region ? ' · ' + esc(p.region) : ''}</span>
+        </div>`).join('')}</div>`);
+    }
+    if (r.messages && r.messages.length) {
+      parts.push(`<div class="gs-group"><h4>Сообщения</h4>${r.messages.map(m => `
+        <div class="gs-hit" onclick="openFromSearch('${m.chat_kind}', ${m.chat_id}, ${m.id})">
+          <b>${esc(m.nick || 'игрок')} · ${esc(m.chat_title || '')} · ${timeAgo(m.created_at)}</b>
+          <span>${esc(m.text)}</span>
+        </div>`).join('')}</div>`);
+    }
+    if (r.files && r.files.length) {
+      parts.push(`<div class="gs-group"><h4>Файлы</h4>${r.files.map(f => `
+        <div class="gs-hit" onclick="window.open('${esc(f.url)}','_blank')">
+          <b>${esc(f.name || 'файл')} · ${esc(f.chat_title || '')}</b>
+          <span>${esc(f.type || '')}</span>
+        </div>`).join('')}</div>`);
+    }
+    if (r.links && r.links.length) {
+      parts.push(`<div class="gs-group"><h4>Ссылки</h4>${r.links.map(l => `
+        <div class="gs-hit" onclick="window.open('${esc(l.url)}','_blank')">
+          <b>${esc(l.chat_title || '')} · ${timeAgo(l.created_at)}</b>
+          <span>${esc(l.url)}</span>
+        </div>`).join('')}</div>`);
+    }
+    if (d.games && d.games.length) {
+      parts.push(`<div class="gs-group"><h4>Игры в каталоге</h4>${d.games.map(g => `
+        <div class="gs-hit" onclick="closeModal();go('search');setTimeout(() => { const s = $('#fgame'); if (s) { s.value = '${g.id}'; loadPlayers(); } }, 250)">
+          <b>${esc(g.name)}</b><span>Показать игроков в этой игре</span>
+        </div>`).join('')}</div>`);
+    }
+    box.innerHTML = parts.length ? parts.join('') : '<div class="hint">Ничего не нашлось. Попробуй другое слово.</div>';
+  } catch (e) { box.innerHTML = `<div class="hint">${esc(e.message)}</div>`; }
+}
+async function openFromSearch(kind, chatId, messageId) {
+  closeModal();
+  go('chats');
+  await loadChats();
+  await openConv(kind === 'group' ? 'group' : 'dm', chatId);
+  setTimeout(() => jumpToMessage(messageId), 600);
 }
 
 /* ---------- история сессий ---------- */
@@ -3719,7 +4146,12 @@ async function openSessions() {
     box.innerHTML = d.items.map(s => `<div class="board-card">
       <div class="bc-top"><b>${esc(s.game_name || 'Игра')}</b><span>${s.minutes} мин</span></div>
       <div class="bc-rows">${[s.finished ? 'завершена' : 'идёт', (s.players || 0) + ' игроков'].map(x => `<span>${esc(x)}</span>`).join('')}</div>
-      <div class="bc-by">${esc((s.members || []).map(m => m.nick).join(', '))}</div>
+      <div class="mate-list">${(s.members || []).map(m => `
+        <div class="mate-row">
+          <span>${esc(m.nick)}${m.is_me ? ' — это ты' : ''}</span>
+          ${m.is_me ? '' : m.is_teammate ? '<em>уже тиммейт</em>'
+            : `<button class="btn sm ghost" onclick="addTeammate('${esc(m.nick)}', this)">В тиммейты</button>`}
+        </div>`).join('')}</div>
       <button class="btn sm primary" onclick="closeModal();playAgain(${s.id})">Играть снова</button>
     </div>`).join('');
   } catch (e) { box.innerHTML = '<div class="hint">Не удалось загрузить историю</div>'; }
