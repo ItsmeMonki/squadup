@@ -197,7 +197,7 @@
  display:flex;flex-direction:column;gap:13px;transition:.18s;position:relative;overflow:hidden
  }
  .card::before{
- content:"";position:absolute;inset:0;opacity:0;transition:.2s;
+ content:"";position:absolute;inset:0;opacity:0;transition:.2s;pointer-events:none;
  background:radial-gradient(420px 180px at 100% 0%,rgba(255,106,0,.18),transparent 70%)
  }
  .card:hover{transform:translateY(-4px);border-color:var(--border-strong);box-shadow:var(--shadow)}
@@ -356,7 +356,9 @@
  .search-hit i{font-style:normal;color:var(--acc-2)}
  .jump-down{position:absolute;left:50%;transform:translateX(-50%);bottom:96px;z-index:4;display:none}
  .chat-win{position:relative}
- .composer{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+ .composer{display:flex;flex-wrap:nowrap;gap:10px;align-items:flex-end}
+ .composer textarea{flex:1 1 auto;min-width:0}
+ .composer .btn{flex:0 0 auto}
  .composer-wrap{border-top:1px solid var(--border);padding:14px}
  .composer textarea{background:rgba(0,0,0,.32);border:1px solid var(--border);border-radius:12px;padding:12px 14px;
  outline:0;font-family:inherit;font-size:15px;resize:none;max-height:140px;min-height:46px;line-height:1.45;width:100%}
@@ -466,7 +468,8 @@
  .copy-tag button{background:transparent;border:0;color:var(--acc-2);font-weight:700;font-size:12.5px}
 
  /* ---------- тосты ---------- */
- #toasts{position:fixed;right:18px;bottom:18px;z-index:300;display:flex;flex-direction:column;gap:10px;max-width:360px}
+ #toasts{position:fixed;right:18px;bottom:18px;z-index:300;display:flex;flex-direction:column;gap:10px;max-width:360px;pointer-events:none}
+ .toast{pointer-events:auto}
  .toast{
  background:rgba(17,18,34,.97);border:1px solid var(--border-strong);border-left:3px solid var(--acc-2);
  border-radius:14px;padding:13px 16px;box-shadow:var(--shadow);animation:up .22s ease;font-size:13.8px
@@ -555,6 +558,113 @@
  .actions{flex-wrap:wrap}
  .results-info{font-size:12.8px}
  }
+/* ======================= чат 1.9: пати, группы, карточки ======================= */
+/* три колонки (список — чат — панель) только на широком экране:
+   на телефоне действует правило «список и диалог по очереди» */
+@media (min-width:1181px){.chat-shell{grid-template-columns:300px 1fr 300px}}
+.chat-aside{background:var(--panel);border:1px solid var(--border);border-radius:16px;overflow:auto;display:flex;flex-direction:column}
+.aside-tabs{display:flex;gap:4px;padding:10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--panel);z-index:2;flex-wrap:wrap}
+.aside-tabs button{background:transparent;border:1px solid transparent;color:var(--muted);font-size:12.5px;padding:6px 9px;border-radius:9px;cursor:pointer}
+.aside-tabs button.on{background:var(--acc-soft);color:var(--acc-2);border-color:var(--acc-line)}
+.aside-body{padding:12px;display:flex;flex-direction:column;gap:10px}
+.aside-item{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:9px 11px;cursor:pointer;display:flex;flex-direction:column;gap:3px}
+.aside-item b{font-size:12.5px;color:var(--acc-2)}
+.aside-item span{font-size:13px;color:var(--text);word-break:break-word}
+.aside-card{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.ac-actions{display:flex;gap:8px;flex-wrap:wrap}
+.member-row{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border)}
+.member-row:last-of-type{border-bottom:0}
+.mr-main{display:flex;flex-direction:column;min-width:0;flex:1}
+.mr-main b{font-size:13.5px}
+.mr-main span{font-size:12px;color:var(--muted)}
+.mr-actions{display:flex;gap:4px}
+.media-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.media-grid img{width:100%;border-radius:10px;border:1px solid var(--border)}
+.chat-group-title{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:10px 12px 6px;display:flex;justify-content:space-between}
+.chat-group-title span{color:var(--acc-2)}
+.chat-item.req{background:rgba(255,138,61,.06);border-color:rgba(255,138,61,.28);flex-wrap:wrap}
+.chat-item.req .req-actions{display:flex;gap:6px;width:100%;margin-top:8px;flex-wrap:wrap}
+.tag-req{font-size:11px;color:#ffd7a8;border:1px solid rgba(255,138,61,.45);border-radius:8px;padding:1px 6px;margin-left:6px}
+.ci-state{font-size:11.5px;color:var(--muted);margin-left:6px}
+.gc-av{width:38px;height:38px;border-radius:12px;background:var(--acc-soft);border:1px solid var(--acc-line);color:var(--acc-2);display:flex;align-items:center;justify-content:center;font-weight:700;flex:0 0 auto}
+.gc-av.big{width:44px;height:44px;font-size:18px}
+.gc-head .gc-line{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle;background:#5a5a5a}
+.p-online{background:#43d17a}.p-playing{background:#ff8a3d}.p-lobby{background:#7aa2ff}
+.p-looking{background:#ffd166}.p-offline{background:#5a5a5a}
+.ready-block{border-top:1px solid var(--border);background:rgba(255,255,255,.02)}
+.ready-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 14px;font-size:13px}
+.ready-chip{font-size:12px;border:1px solid var(--border);border-radius:9px;padding:3px 8px;color:var(--muted)}
+.ready-chip.ready-on{color:#9ff0c0;border-color:rgba(67,209,122,.45);background:rgba(67,209,122,.08)}
+.ready-chip.ready-off{color:#ffd7a8;border-color:rgba(255,138,61,.35)}
+.sys-row{display:flex;justify-content:center;margin:8px 0}
+.sys-row span{font-size:12.5px;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:11px;padding:5px 12px}
+.card-lfg,.card-invite,.card-poll{border:1px solid var(--acc-line);border-radius:14px;padding:12px 14px;margin-top:8px;background:linear-gradient(180deg,rgba(255,138,61,.07),rgba(255,255,255,.02));max-width:420px}
+.cl-top{display:flex;align-items:baseline;gap:8px}
+.cl-top b{font-size:15px}
+.cl-top span{font-size:12.5px;color:var(--muted)}
+.cl-need{font-size:13px;margin-top:6px;color:var(--text)}
+.cl-rows,.ci-rows,.bc-rows{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.cl-rows span,.ci-rows span,.bc-rows span{font-size:12px;color:var(--acc-2);border:1px solid var(--acc-line);border-radius:8px;padding:2px 8px;background:var(--acc-soft)}
+.cl-note{font-size:12.5px;color:var(--muted);margin-top:8px}
+.card-lfg .btn{margin-top:10px}
+.ci-top{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--acc-2)}
+.ci-game{font-size:16px;font-weight:700;margin-top:4px}
+.ci-by{font-size:12.5px;color:var(--muted);margin-top:8px}
+.ci-actions{display:flex;gap:8px;margin-top:10px}
+.ci-state{font-size:12.5px;color:#9ff0c0;margin-top:8px}
+.card-poll{background:linear-gradient(180deg,rgba(122,162,255,.08),rgba(255,255,255,.02));border-color:rgba(122,162,255,.35);max-width:460px}
+.cp-q{font-size:14.5px;font-weight:600;margin-bottom:8px}
+.poll-opt{position:relative;display:flex;align-items:center;gap:8px;width:100%;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:6px;cursor:pointer;color:var(--text);text-align:left;overflow:hidden}
+.poll-opt.mine{border-color:var(--acc-line)}
+.poll-opt .po-bar{position:absolute;left:0;top:0;bottom:0;background:rgba(122,162,255,.18)}
+.poll-opt .po-text{position:relative;flex:1}
+.poll-opt .po-count{position:relative;color:var(--muted);font-size:12.5px}
+.cp-foot{font-size:12px;color:var(--muted);margin-top:4px}
+.rx-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.rx-chip{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:9px;padding:2px 8px;font-size:12.5px;color:var(--text);cursor:pointer}
+.rx-chip.mine{border-color:var(--acc-line);background:var(--acc-soft);color:var(--acc-2)}
+.rx-chip b{font-weight:600}
+.rx-picker{display:flex;gap:6px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:8px;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.rx-picker button{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:5px 9px;font-size:12.5px;cursor:pointer}
+.pin-mark{font-size:11.5px;color:#ffd7a8;margin-left:8px}
+.msg-row.pinned .msg-main{border-left:2px solid rgba(255,138,61,.5);padding-left:10px}
+.quick-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 8px}
+.quick-chips .chip{font-size:12.5px;padding:5px 10px}
+.plus-btn{min-width:38px;height:40px;font-size:18px;line-height:1}
+.plus-menu{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:6px;flex-direction:column;box-shadow:0 14px 34px rgba(0,0,0,.5)}
+.plus-menu button{background:transparent;border:0;color:var(--text);text-align:left;padding:9px 12px;border-radius:9px;font-size:13.5px;cursor:pointer}
+.plus-menu button:hover{background:rgba(255,255,255,.06)}
+.board-card{border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px;background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:4px}
+.bc-top{display:flex;justify-content:space-between;align-items:baseline}
+.bc-top b{font-size:15px}
+.bc-top span{font-size:12.5px;color:var(--acc-2)}
+.bc-by{font-size:12.5px;color:var(--muted)}
+.bc-note{font-size:13px;color:var(--text)}
+.bc-state{font-size:12.5px;color:#9ff0c0}
+.chat-head-actions{display:flex;gap:8px;flex-wrap:wrap}
+#typingNames{font-size:12.5px;color:var(--muted);padding:0 14px}
+@media (max-width:1180px){.chat-shell{grid-template-columns:280px 1fr}.chat-aside{display:none!important}}
+@media (max-width:760px){.chat-shell{grid-template-columns:1fr}}
+@media (max-width:760px){
+  .chat-aside{display:none!important}
+  .chat-head-actions{width:100%}
+  .chat-head{padding:8px 10px;gap:6px;flex-wrap:nowrap}
+  .chat-head .nick{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chat-head .desk-only{display:none}
+  .chat-head .btn{padding:8px 10px}
+  .gc-head .gc-line{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chat-head .av-wrap-sm .avatar,.chat-head .gc-av.big{width:34px;height:34px;font-size:15px}
+  .quick-chips{flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;padding:0 10px 6px;scrollbar-width:none}
+  .quick-chips::-webkit-scrollbar{display:none}
+  .quick-chips .chip{flex:0 0 auto}
+  .composer{gap:8px}
+  .composer .btn{padding:11px 12px}
+  .composer .btn .send-label{display:inline}
+  .composer textarea{min-height:42px;padding:10px 12px;font-size:16px}
+  .plus-btn{min-width:34px;height:42px}
+  .ready-row{padding:8px 10px}
+}
 </style>
 </head>
 <body>
@@ -684,17 +794,29 @@
  <div class="section-head">
  <div>
  <h2 class="page-title">Чаты</h2>
- <div class="page-sub">Диалоги с игроками. Ответ собеседника приходит за секунды — даже если приложение закрыто, придёт уведомление.</div>
+ <div class="page-sub">Личные диалоги, группы и пати. Ответ приходит за секунды — даже если приложение закрыто, придёт уведомление.</div>
  </div>
+ <div class="chat-head-actions">
+ <button class="btn sm ghost" onclick="openSessions()">Сессии</button>
+ <button class="btn sm" onclick="openLfgBoard()">Найти игроков</button>
+ <button class="btn sm primary" onclick="openCreateParty()">Собрать пати</button>
+ </div>
+ </div>
+ <div class="seg" id="chatFilters" style="margin-bottom:12px">
+ <button data-f="all" class="on" onclick="setChatFilter('all')">Все</button>
+ <button data-f="dm" onclick="setChatFilter('dm')">Личные</button>
+ <button data-f="group" onclick="setChatFilter('group')">Группы и пати</button>
  </div>
  <div class="chat-shell">
  <div class="chat-list" id="chatList"></div>
  <div class="chat-win" id="chatWin">
  <div class="empty" style="margin:auto;border:0">
- Открой диалог из списка — или позови игрока из поиска кнопкой «Позвать», и переписка появится здесь.<br><br>
+ Открой разговор из списка, найди игроков кнопкой «Найти игроков» или собери пати —<br>
+ оно появится здесь отдельным чатом с игровой шапкой, составом и готовностью.<br><br>
  Пока друзей нет в приложении — <button class="btn sm primary" onclick="openInviteFriends()">Позвать друзей</button>
  </div>
  </div>
+ <aside class="chat-aside" id="chatAside"></aside>
  </div>
  </section>
 
@@ -812,6 +934,14 @@ const state = {
  replyTo: null,         // сообщение, на которое отвечаем
  editingId: null,       // сообщение, которое правим
  chatSearchOpen: false,
+ convKind: 'dm',        // открыт личный диалог или групповой чат (группа, пати)
+ conv: {},              // текущий разговор: шапка, игра, состав
+ inbox: [],             // единый список: личные, группы, пати, запросы
+ chatFilter: 'all',     // фильтр списка: все, личные, группы
+ panelTab: 'members',   // вкладка правой панели
+ party: null,           // текущее пати: состав, готовность, статус
+ members: [],           // участники группового чата
+ panels: { pins: [], media: [], links: [], files: [] },
  chatSince: '',         // когда переписка загружена целиком (для запроса изменений)
  typingSentAt: 0,       // когда отправляли «печатает» — не спамим сервер
  loadingAll: false,
@@ -929,9 +1059,11 @@ function go(view) {
  $$('#nav .nav-btn').forEach(b => b.classList.toggle('active', b.dataset.go === view));
  $('#userMenu').classList.remove('open');
  if (view === 'chats') {
- if (!state.activeChat) $('.chat-shell').classList.remove('show-win');
+ // на телефоне вкладка «Чаты» всегда открывает список разговоров,
+ // а не последний диалог: в него можно вернуться нажатием на разговор
+ $('.chat-shell').classList.remove('show-win');
  loadChats();
- if (state.activeChat) startPolling();
+ startPolling();
  } else { stopPolling(); }
  if (view === 'squads') loadSquads();
  if (view === 'search') loadLooking();
@@ -2412,396 +2544,1193 @@ async function sendInvite(id) {
 }
 
 /* ---------- чаты ---------- */
+/* ======================= ЧАТЫ 1.9: личные, группы, пати =======================
+   Один список разговоров: личные диалоги, группы и пати. У пати — игровая шапка,
+   готовность состава, карточки поиска игроков и приглашений, реакции и закреплённые.
+   Все статусы — словами и цветной точкой, без эмодзи.
+============================================================================= */
+
+const PRESENCE_WORD = {
+  online: 'Онлайн', looking: 'Ищет тиммейтов', lobby: 'В пати', playing: 'Играет',
+  offline: 'Не в сети',
+};
+const RX_VALUES = ['Го', 'Жду', 'Круто', 'Смешно', 'Мимо', 'Плюс'];
+const QUICK_PHRASES = ['Го', 'Я готов', 'Мик есть?', 'Ждём тебя', 'Через 5 минут', 'Спокойно, без спешки'];
+
+function convUrl(part) {
+  const kind = state.convKind === 'group' ? 'groups' : 'chats';
+  return '/api/' + kind + '/' + state.activeChat + (part ? '/' + part : '');
+}
+function isGroup() { return state.convKind === 'group'; }
+function conv() { return state.conv || {}; }
+
+/* ---------- список разговоров ---------- */
 async function loadChats() {
- if (!state.token) return;
- try {
- const data = await api('/api/chats');
- state.chats = data.items;
- state.chats.forEach(c => state.chatMeta.set(c.id, c));
- const total = data.items.reduce((s, c) => s + c.unread, 0);
- $('#unreadBadge').style.display = total ? '' : 'none';
- $('#unreadBadge').textContent = total;
- updateAppBadge(total);
- $('#chatList').innerHTML = data.items.length ? data.items.map(c => `
- <div class="chat-item ${state.activeChat === c.id ? 'active' : ''}" onclick="openChat(${c.id})">
- ${avatarWithStatus(c.peer_nick, c.avatar, c.online, c.last_seen)}
- <div class="ci">
- <b><span class="who">${esc(c.peer_nick)}</span>${c.game ? `<span class="gchip sm">${esc(c.game.short)}</span>` : ''}
- ${c.unread ? '' : `<span>${timeAgo(c.updated_at)}</span>`}</b>
- <p class="${c.last_sender === 'me' ? 'muted-last' : ''}">${c.typing
- ? '<i style="font-style:normal;color:var(--acc-2)">печатает...</i>'
- : (c.last_sender === 'me' ? 'Вы: ' : '') + esc(c.last_message || 'Нет сообщений')}</p>
- </div>
- ${c.unread ? `<div class="unread">${c.unread}</div>` : ''}
- </div>`).join('') : '<div class="empty" style="border:0;margin:auto;padding:30px">Пока нет диалогов.<br>Найди игрока во вкладке «Поиск».</div>';
- } catch (e) {}
+  if (!state.token) return;
+  try {
+    const data = await api('/api/inbox');
+    state.inbox = data.items;
+    const total = data.unread || 0;
+    state.chats = data.items.filter(c => c.type === 'dm');
+    state.chats.forEach(c => state.chatMeta.set(c.id, Object.assign({}, state.chatMeta.get(c.id) || {}, {
+      peer_nick: c.title, avatar: c.avatar, online: c.presence !== 'offline',
+      last_seen: null, game: c.game_short ? { short: c.game_short } : null,
+      listing_id: c.listing_id, peer_user_id: c.peer_user_id, typing: c.typing,
+    })));
+    state.groupChats = data.items.filter(c => c.type !== 'dm');
+    $('#unreadBadge').style.display = total ? '' : 'none';
+    $('#unreadBadge').textContent = total;
+    updateAppBadge(total);
+    renderChatList();
+  } catch (e) { /* список обновится на следующем опросе */ }
 }
 
-async function openChat(id) {
- state.activeChat = id; state.lastMsgId = 0;
- state.messages = []; state.msgById = new Map();
- state.replyTo = null; state.editingId = null; state.chatSearchOpen = false;
- const meta = state.chatMeta.get(id) || {};
- if (!meta.peer_nick) { await loadChats(); }
- const m = state.chatMeta.get(id) || {};
- $('#chatWin').innerHTML = `
- <div class="chat-head">
- <button class="btn sm ghost back-to-chats" onclick="closeChatWindow()" title="К списку диалогов">Назад</button>
- <div id="chatPeerAv">${avatarWithStatus(m.peer_nick, m.avatar, m.online, m.last_seen)}</div>
- <div style="flex:1;min-width:0">
- <div class="nick" style="font-size:15px">${esc(m.peer_nick || 'Игрок')}</div>
- <div class="hint" id="chatPeerState">${peerStateText(m)}</div>
- </div>
- <button class="btn sm ghost" onclick="toggleChatSearch()" title="Поиск по переписке"><span class="search-label">Поиск</span></button>
- ${m.listing_id ? `<button class="btn sm ghost" onclick="openProfile(${m.listing_id})">Профиль</button>` : ''}
- ${m.peer_user_id
- ? `<button class="btn sm ghost" onclick="blockChatUser(${id})">Заблокировать</button>`
- : `<span class="hint">гостевая анкета</span>`}
- </div>
- <div id="chatSearchBox"></div>
- <div class="msgs" id="msgs"></div>
- <button class="btn sm primary jump-down" id="jumpDown" onclick="scrollToBottom(true)">Вниз</button>
- <div class="composer-wrap">
- <div id="composerBanner"></div>
- <div class="composer">
- <textarea id="msgInput" rows="1" placeholder="Написать сообщение…"></textarea>
- <button class="btn primary" onclick="sendMessage()"><span class="send-label">Отправить</span></button>
- </div>
- </div>`;
- const ta = $('#msgInput');
- // Enter — отправить, Shift+Enter — новая строка (как в Discord)
- ta.addEventListener('keydown', e => {
- if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
- if (e.key === 'Escape') { cancelReply(); cancelEdit(); }
- });
- ta.addEventListener('input', () => { autoGrow(ta); noteTyping(); });
- ta.addEventListener('focus', () => { $('#chatWin').dataset.focus = '1'; });
- ta.addEventListener('blur', () => { delete $('#chatWin').dataset.focus; });
- $('#msgs').addEventListener('scroll', () => {
- const box = $('#msgs');
- const far = box.scrollHeight - box.scrollTop - box.clientHeight > 160;
- $('#jumpDown').style.display = far ? '' : 'none';
- });
- // на телефоне вместо списка и диалога сразу показываем диалог
- $('.chat-shell').classList.add('show-win');
- await api('/api/chats/' + id + '/read', { method: 'POST' });
- await fetchMessages(true);
- loadChats();
- startPolling();
- ta.focus();
+function presenceDot(stateName) {
+  return `<span class="p-dot p-${esc(stateName || 'offline')}" title="${esc(PRESENCE_WORD[stateName] || '')}"></span>`;
+}
+
+function renderChatList() {
+  const box = $('#chatList');
+  if (!box) return;
+  const items = state.inbox || [];
+  const requests = items.filter(c => c.requested);
+  const rest = items.filter(c => !c.requested && matchesFilter(c));
+  const parts = [];
+
+  if (requests.length) {
+    parts.push(`<div class="chat-group-title">Запросы на переписку <span>${requests.length}</span></div>`);
+    parts.push(requests.map(c => `
+      <div class="chat-item req ${state.activeChat === c.id && !isGroup() ? 'active' : ''}" onclick="openChat(${c.id})">
+        ${avatarWithStatus(c.title, c.avatar, c.presence !== 'offline', null)}
+        <div class="ci">
+          <b><span class="who">${esc(c.title)}</span><span class="tag-req">запрос</span></b>
+          <p>${esc(c.last_message || 'Хочет написать')}</p>
+        </div>
+        <div class="req-actions" onclick="event.stopPropagation()">
+          <button class="btn sm primary" onclick="acceptRequest(${c.id})">Принять</button>
+          <button class="btn sm ghost" onclick="ignoreRequest(${c.id})">Скрыть</button>
+          <button class="btn sm ghost danger" onclick="blockRequest(${c.id})">В блок</button>
+        </div>
+      </div>`).join(''));
+  }
+
+  parts.push(`<div class="chat-group-title">${state.chatFilter === 'dm' ? 'Личные' : state.chatFilter === 'group' ? 'Группы и пати' : 'Все разговоры'}
+    <span>${rest.length}</span></div>`);
+  parts.push(rest.length ? rest.map(c => chatItemHtml(c)).join('')
+    : '<div class="empty" style="border:0;padding:26px">Разговоров нет.<br>Найди игрока во вкладке «Поиск» или собери пати кнопкой выше.</div>');
+  box.innerHTML = parts.join('');
+}
+
+function matchesFilter(c) {
+  if (state.chatFilter === 'dm') return c.type === 'dm';
+  if (state.chatFilter === 'group') return c.type !== 'dm';
+  return true;
+}
+
+function chatItemHtml(c) {
+  const active = state.activeChat === c.id && ((c.type === 'dm') !== isGroup());
+  const who = c.type === 'dm' ? esc(c.title) : esc(c.title);
+  const badge = c.type === 'dm'
+    ? (c.presence ? presenceDot(c.presence) : '')
+    : `<span class="gchip sm">${c.members}</span>`;
+  const preview = c.typing
+    ? '<i style="font-style:normal;color:var(--acc-2)">печатает...</i>'
+    : (c.last_sender === 'me' ? 'Вы: ' : '') + esc(c.last_message || 'Нет сообщений');
+  const stateLine = [
+    c.game_short ? `<span class="gchip sm">${esc(c.game_short)}</span>` : '',
+    c.type !== 'dm' ? `<span class="ci-state">${esc(c.presence_label || '')}</span>` : '',
+    c.muted ? '<span class="ci-state">без звука</span>' : '',
+  ].join('');
+  const open = c.type === 'dm' ? `openChat(${c.id})` : `openGroup(${c.id})`;
+  return `<div class="chat-item ${active ? 'active' : ''}" onclick="${open}">
+    ${c.type === 'dm'
+      ? avatarWithStatus(c.title, c.avatar, c.presence !== 'offline', null)
+      : `<div class="gc-av">${c.type === 'party' ? 'П' : 'Г'}</div>`}
+    <div class="ci">
+      <b>${badge}<span class="who">${who}</span>${stateLine}
+        ${c.unread ? '' : `<span>${timeAgo(c.updated_at)}</span>`}</b>
+      <p class="${c.last_sender === 'me' ? 'muted-last' : ''}">${preview}</p>
+    </div>
+    ${c.unread ? `<div class="unread">${c.unread}</div>` : ''}
+  </div>`;
+}
+
+function setChatFilter(f) {
+  state.chatFilter = f;
+  document.querySelectorAll('#chatFilters button').forEach(b => b.classList.toggle('on', b.dataset.f === f));
+  renderChatList();
+}
+
+/* ---------- открытие разговора ---------- */
+function openChat(id) { return openConv('dm', id); }
+function openGroup(id) { return openConv('group', id); }
+
+async function openConv(kind, id) {
+  state.convKind = kind;
+  state.activeChat = id;
+  state.lastMsgId = 0;
+  state.messages = []; state.msgById = new Map();
+  state.replyTo = null; state.editingId = null; state.chatSearchOpen = false;
+  state.panelTab = 'members';
+  closeMsgMenu();
+  const meta = (state.inbox || []).find(c => c.id === id && ((c.type === 'dm') === (kind === 'dm'))) || {};
+  state.conv = Object.assign({}, meta);
+  renderChatWindow();
+  $('.chat-shell').classList.add('show-win');
+  if (kind === 'dm') await api('/api/chats/' + id + '/read', { method: 'POST' }).catch(() => {});
+  else await api('/api/groups/' + id + '/read', { method: 'POST' }).catch(() => {});
+  await fetchMessages(true);
+  if (kind === 'group') await loadAside();
+  renderChatList();
+  startPolling();
+  const ta = $('#msgInput'); if (ta) ta.focus();
+}
+
+function renderChatWindow() {
+  const win = $('#chatWin');
+  if (!win) return;
+  const c = conv();
+  const head = isGroup() ? groupHeadHtml(c) : dmHeadHtml(c);
+  win.innerHTML = `
+    ${head}
+    <div id="chatSearchBox"></div>
+    <div class="msgs" id="msgs"></div>
+    <button class="btn sm primary jump-down" id="jumpDown" onclick="scrollToBottom(true)">Вниз</button>
+    <div id="readyBlock" class="ready-block" style="display:none"></div>
+    <div class="composer-wrap">
+      <div id="composerBanner"></div>
+      <div class="quick-chips" id="quickChips"></div>
+      <div class="composer">
+        <button class="btn sm plus-btn" id="plusBtn" onclick="openPlusMenu(event)" title="Что добавить">+</button>
+        <textarea id="msgInput" rows="1" placeholder="Написать сообщение…"></textarea>
+        <button class="btn primary" onclick="sendMessage()"><span class="send-label">Отправить</span></button>
+      </div>
+    </div>`;
+  const ta = $('#msgInput');
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    if (e.key === 'Escape') { cancelReply(); cancelEdit(); }
+  });
+  ta.addEventListener('input', () => { autoGrow(ta); noteTyping(); });
+  $('#msgs').addEventListener('scroll', () => {
+    const box = $('#msgs');
+    const far = box.scrollHeight - box.scrollTop - box.clientHeight > 160;
+    $('#jumpDown').style.display = far ? '' : 'none';
+  });
+  renderQuickChips();
+  renderReadyBlock();
+}
+
+function dmHeadHtml(c) {
+  return `<div class="chat-head">
+    <button class="btn sm ghost back-to-chats" onclick="closeChatWindow()" title="К списку диалогов">Назад</button>
+    <div id="chatPeerAv">${avatarWithStatus(c.title || 'Игрок', c.avatar, c.presence !== 'offline', null)}</div>
+    <div style="flex:1;min-width:0">
+      <div class="nick" style="font-size:15px">${esc(c.title || 'Игрок')}</div>
+      <div class="hint" id="chatPeerState">${esc(c.presence_label || '')}</div>
+    </div>
+    ${c.listing_id ? `<button class="btn sm ghost desk-only" onclick="openProfile(${c.listing_id})">Профиль</button>` : ''}
+    <button class="btn sm ghost desk-only" onclick="inviteToParty(${JSON.stringify(c.title || '')})">В пати</button>
+    <button class="btn sm ghost desk-only" onclick="startVoiceSoon()" title="Голосовой чат">Голос</button>
+    <button class="btn sm ghost desk-only" onclick="toggleChatSearch()" title="Поиск по переписке"><span class="search-label">Поиск</span></button>
+    <button class="btn sm ghost" onclick="openConvMenu(event)" title="Ещё">Ещё</button>
+  </div>`;
+}
+
+function groupHeadHtml(c) {
+  const g = c.game_short || '';
+  const parts = [g || 'Групповой чат'];
+  if (c.mode_label) parts.push(c.mode_label);
+  if (c.region_label) parts.push(c.region_label);
+  if (c.rank) parts.push(c.rank);
+  parts.push(`${c.members || 1} игроков`);
+  return `<div class="chat-head gc-head">
+    <button class="btn sm ghost back-to-chats" onclick="closeChatWindow()" title="К списку диалогов">Назад</button>
+    <div class="gc-av big">${c.type === 'party' ? 'П' : 'Г'}</div>
+    <div style="flex:1;min-width:0">
+      <div class="nick" style="font-size:15px">${esc(c.title || 'Пати')}</div>
+      <div class="gc-line" id="gcLine">${parts.filter(Boolean).map(p => esc(p)).join(' · ')}</div>
+    </div>
+    <button class="btn sm ghost desk-only" onclick="openPartyInvite()">Позвать</button>
+    <button class="btn sm ghost desk-only" onclick="startVoiceSoon()" title="Голосовой чат">Голос</button>
+    <button class="btn sm ghost desk-only" onclick="toggleChatSearch()" title="Поиск по переписке"><span class="search-label">Поиск</span></button>
+    <button class="btn sm ghost desk-only" onclick="togglePanel()" title="Участники, закреплённые, ссылки">Панель</button>
+    <button class="btn sm ghost" onclick="openConvMenu(event)" title="Ещё">Ещё</button>
+  </div>`;
 }
 
 function closeChatWindow() {
- stopPolling();
- state.activeChat = null;
- $('.chat-shell').classList.remove('show-win');
- loadChats();
+  stopPolling();
+  state.activeChat = null;
+  state.convKind = 'dm';
+  state.conv = {};
+  $('.chat-shell').classList.remove('show-win');
+  const aside = $('#chatAside'); if (aside) { aside.innerHTML = ''; aside.style.display = 'none'; }
+  loadChats();
 }
 
-function peerStateText(m) {
- if (m.typing) return 'печатает...';
- if (m.online) return m.game ? 'онлайн · ' + esc(m.game.short) : 'онлайн';
- if (m.last_seen) return 'был(а) ' + timeAgo(m.last_seen);
- return m.game ? esc(m.game.short) : 'Диалог';
-}
 function autoGrow(ta) {
- ta.style.height = 'auto';
- ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
 }
 function scrollToBottom(force) {
- const box = $('#msgs'); if (!box) return;
- const far = box.scrollHeight - box.scrollTop - box.clientHeight > 160;
- if (force || !far) box.scrollTop = box.scrollHeight;
- if (far) $('#jumpDown').style.display = '';
+  const box = $('#msgs'); if (!box) return;
+  const far = box.scrollHeight - box.scrollTop - box.clientHeight > 160;
+  if (force || !far) box.scrollTop = box.scrollHeight;
+  if (far) $('#jumpDown').style.display = '';
 }
+function scrollBottom(el) { el.scrollTop = el.scrollHeight; }
 
-/* «печатает»: сообщаем серверу не чаще раза в 3 секунды */
 function noteTyping() {
- const id = state.activeChat; if (!id) return;
- const now = Date.now();
- if (now - state.typingSentAt < 3000) return;
- state.typingSentAt = now;
- api('/api/chats/' + id + '/typing', { method: 'POST' }).catch(() => {});
+  const id = state.activeChat; if (!id) return;
+  const now = Date.now();
+  if (now - state.typingSentAt < 3000) return;
+  state.typingSentAt = now;
+  api(convUrl('typing'), { method: 'POST' }).catch(() => {});
 }
 
-/* ---------- поиск по переписке ---------- */
-function toggleChatSearch() {
- state.chatSearchOpen = !state.chatSearchOpen;
- const box = $('#chatSearchBox');
- if (!box) return;
- if (!state.chatSearchOpen) { box.innerHTML = ''; return; }
- box.innerHTML = `<div class="chat-search">
- <input id="chatSearchInput" placeholder="Найти в переписке..." oninput="runChatSearch()">
- <button class="btn sm ghost" onclick="toggleChatSearch()">Закрыть</button>
- </div>
- <div id="chatSearchHits"></div>`;
- $('#chatSearchInput').focus();
-}
-async function runChatSearch() {
- const q = ($('#chatSearchInput').value || '').trim();
- const hits = $('#chatSearchHits'); if (!hits) return;
- if (q.length < 2) { hits.innerHTML = ''; return; }
- try {
- const data = await api('/api/chats/' + state.activeChat + '/search?q=' + encodeURIComponent(q));
- hits.innerHTML = data.items.length
- ? `<div class="search-hits">${data.items.map(m => `
- <div class="search-hit" onclick="jumpToMessage(${m.id})">
- <b>${esc(m.nick)} · ${timeAgo(m.created_at)}</b>
- <span>${esc(m.text)}</span></div>`).join('')}</div>`
- : '<div class="search-hits"><div class="search-hit"><span>Ничего не нашлось</span></div></div>';
- } catch (e) { hits.innerHTML = ''; }
-}
-async function jumpToMessage(id) {
- if (!state.messages.length || !state.msgById.has(id)) {
- state.loadingAll = true;
- await fetchMessages(false, true);
- state.loadingAll = false;
- }
- const row = document.querySelector('.msg-row[data-id="' + id + '"]');
- if (!row) { toast('Сообщение не найдено', 'err'); return; }
- row.scrollIntoView({ block: 'center', behavior: 'smooth' });
- row.classList.add('flash');
- setTimeout(() => row.classList.remove('flash'), 1800);
-}
-
-/* ---------- ответ и правка ---------- */
-function replyToMessage(id) {
- const m = state.msgById.get(id); if (!m) return;
- cancelEdit();
- state.replyTo = m;
- renderComposerBanner();
- $('#msgInput').focus();
-}
-function cancelReply() { if (!state.replyTo) return; state.replyTo = null; renderComposerBanner(); }
-function editMessage(id) {
- const m = state.msgById.get(id); if (!m || m.sender !== 'me' || m.deleted) return;
- cancelReply();
- state.editingId = id;
- const ta = $('#msgInput');
- ta.value = m.text; autoGrow(ta); ta.focus();
- renderComposerBanner();
-}
-function cancelEdit() {
- if (!state.editingId) return;
- state.editingId = null;
- const ta = $('#msgInput'); if (ta) { ta.value = ''; autoGrow(ta); }
- renderComposerBanner();
-}
-function renderComposerBanner() {
- const box = $('#composerBanner'); if (!box) return;
- if (state.editingId) {
- const m = state.msgById.get(state.editingId) || {};
- box.innerHTML = `<div class="composer-banner">
- <span>Изменение сообщения: <b>${esc((m.text || '').slice(0, 80))}</b></span>
- <button onclick="cancelEdit()">Отмена</button></div>`;
- return;
- }
- if (state.replyTo) {
- const m = state.replyTo;
- const who = m.sender === 'me' ? 'себе' : (state.chatMeta.get(state.activeChat) || {}).peer_nick || 'игроку';
- box.innerHTML = `<div class="composer-banner">
- <span>Ответ ${esc(who)}: <b>${esc((m.text || '').slice(0, 80))}</b></span>
- <button onclick="cancelReply()">Отмена</button></div>`;
- return;
- }
- box.innerHTML = '';
-}
-async function copyMessage(id) {
- const m = state.msgById.get(id); if (!m) return;
- await copyText(m.text, 'Сообщение скопировано');
-}
-async function deleteMessage(id) {
- const m = state.msgById.get(id); if (!m || m.sender !== 'me') return;
- if (!confirm('Удалить сообщение? Оно исчезнет у обоих собеседников.')) return;
- try {
- await api('/api/chats/' + state.activeChat + '/messages/' + id + '/delete', { method: 'POST' });
- if (state.editingId === id) cancelEdit();
- await fetchMessages(false, true);
- } catch (e) { toast(esc(e.message), 'err'); }
-}
-
-/* меню действий: правый клик, долгое нажатие или кнопка «...» */
-function openMsgMenu(id, x, y) {
- const m = state.msgById.get(id); if (!m) return;
- closeMsgMenu();
- const mine = m.sender === 'me' && !m.deleted;
- const items = [];
- if (!m.deleted) items.push(['Ответить', () => replyToMessage(id)]);
- if (!m.deleted && m.text) items.push(['Копировать текст', () => copyMessage(id)]);
- if (mine) {
- if (m.text) items.push(['Изменить', () => editMessage(id)]);
- items.push(['Удалить', () => deleteMessage(id)]);
- }
- if (!items.length) return;
- const menu = document.createElement('div');
- menu.className = 'msg-tools';
- menu.id = 'msgMenu';
- menu.style.display = 'flex';
- menu.style.position = 'fixed';
- menu.style.top = Math.max(10, Math.min(y, window.innerHeight - 160)) + 'px';
- menu.style.left = Math.max(10, Math.min(x, window.innerWidth - 190)) + 'px';
- menu.style.right = 'auto';
- menu.style.zIndex = '60';
- menu.innerHTML = items.map((it, i) => `<button data-i="${i}">${esc(it[0])}</button>`).join('');
- items.forEach((it, i) => { menu.querySelector(`button[data-i="${i}"]`).onclick = () => { closeMsgMenu(); it[1](); }; });
- document.body.appendChild(menu);
- setTimeout(() => document.addEventListener('click', closeMsgMenu, { once: true }), 30);
-}
-function closeMsgMenu() { const m = $('#msgMenu'); if (m) m.remove(); }
-
+/* ---------- загрузка сообщений ---------- */
 async function fetchMessages(scroll = false, all = false) {
- const id = state.activeChat; if (!id) return;
- const url = '/api/chats/' + id + '/messages?'
- + (all ? 'all=1' : 'after=' + state.lastMsgId + (state.chatSince ? '&since=' + encodeURIComponent(state.chatSince) : ''));
- const data = await api(url);
- if (all) {
- // полная переписка: перерисовываем целиком (нужно для поиска и перехода к сообщению)
- state.messages = data.items;
- state.lastMsgId = data.items.length ? data.items[data.items.length - 1].id : 0;
- state.chatSince = new Date().toISOString().replace('Z', '+00:00');
- } else {
- const incoming = (data.items || []).concat(data.changed || []);
- if (!incoming.length && !data.typing && !data.peer_nick) return;
- incoming.forEach(m => {
- state.lastMsgId = Math.max(state.lastMsgId, m.id);
- const i = state.messages.findIndex(x => x.id === m.id);
- if (i >= 0) state.messages[i] = m; else state.messages.push(m);
- });
- }
- // статус «прочитано» у моих сообщений обновляем всегда: собеседник мог прочитать уже после отправки
- if (data.peer_read_at) {
- state.messages.forEach(m => {
- if (m.sender === 'me' && !m.deleted) m.read = data.peer_read_at >= m.created_at;
- });
- }
- state.msgById = new Map(state.messages.map(m => [m.id, m]));
- state.chatMeta.set(id, Object.assign({}, state.chatMeta.get(id) || {}, {
- peer_nick: data.peer_nick, peer_user_id: data.peer_user_id, avatar: data.avatar,
- online: data.online, last_seen: data.last_seen, typing: data.typing,
- }));
- renderMessages(data.typing);
- const total = state.chats.reduce((s, c) => s + c.unread, 0);
- $('#unreadBadge').style.display = total ? '' : 'none';
- $('#unreadBadge').textContent = total;
- if (scroll) setTimeout(() => scrollToBottom(true), 60);
+  const id = state.activeChat; if (!id) return;
+  const url = convUrl('messages') + '?'
+    + (all ? 'all=1' : 'after=' + state.lastMsgId + (state.chatSince ? '&since=' + encodeURIComponent(state.chatSince) : ''));
+  const data = await api(url);
+  if (all) {
+    state.messages = data.items || [];
+    state.lastMsgId = state.messages.length ? state.messages[state.messages.length - 1].id : 0;
+    state.chatSince = new Date().toISOString().replace('Z', '+00:00');
+  } else {
+    const incoming = (data.items || []).concat(data.changed || []);
+    incoming.forEach(m => {
+      state.lastMsgId = Math.max(state.lastMsgId, m.id);
+      const i = state.messages.findIndex(x => x.id === m.id);
+      if (i >= 0) state.messages[i] = m; else state.messages.push(m);
+    });
+  }
+  if (data.peer_read_at) {
+    state.messages.forEach(m => {
+      if (m.sender === 'me' && !m.deleted) m.read = data.peer_read_at >= m.created_at;
+    });
+  }
+  if (!isGroup()) {
+    // живой статус собеседника: «печатает», онлайн, аватар — прямо из опроса диалога
+    const c = conv();
+    if (data.typing != null) c.typing = data.typing;
+    if (data.peer_nick) c.title = c.title || data.peer_nick;
+    if (data.avatar != null) c.avatar = data.avatar;
+    if (data.online != null) { c.presence = data.online ? 'online' : 'offline'; c.presence_label = data.online ? 'Онлайн' : 'Не в сети'; }
+  }
+  state.msgById = new Map(state.messages.map(m => [m.id, m]));
+  if (isGroup()) {
+    state.members = data.members || [];
+    state.party = data.party || null;
+    const c = conv();
+    if (data.party) {
+      c.members = data.party.players; c.status = data.party.status; c.type = 'party';
+      c.game_short = data.party.game_short; c.mode_label = MODE_WORD[data.party.mode] || data.party.mode;
+      c.region_label = data.party.region; c.rank = data.party.rank;
+      c.is_leader = data.party.is_leader; c.title = c.title || data.party.game_name;
+    }
+    const line = $('#gcLine');
+    if (line && state.party) {
+      const p = state.party;
+      line.textContent = [p.game_short || p.game_name, MODE_WORD[p.mode] || p.mode, p.region, p.rank,
+        `${p.players}/${p.size} игроков`].filter(Boolean).join(' · ');
+    }
+    renderReadyBlock();
+    renderMembers();
+  }
+  renderMessages(isGroup() ? (data.typing_names || []) : (data.typing ? conv().title : ''));
+  const total = state.inbox ? state.inbox.reduce((s, c) => s + (c.unread || 0), 0) : 0;
+  $('#unreadBadge').style.display = total ? '' : 'none';
+  $('#unreadBadge').textContent = total;
+  if (scroll) setTimeout(() => scrollToBottom(true), 60);
 }
 
-function renderMessages(peerTyping) {
- const box = $('#msgs'); if (!box) return;
- const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 160;
- const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
- box.innerHTML = state.messages.map((m, i) => msgRowHtml(m, state.messages[i - 1])).join('')
- + (peerTyping ? '<div class="typing" id="typingDot"><i></i><i></i><i></i></div>' : '');
- // состояние собеседника в шапке
- const meta = state.chatMeta.get(state.activeChat) || {};
- const stateEl = $('#chatPeerState');
- if (stateEl) stateEl.textContent = peerStateText({ typing: peerTyping, online: meta.online, last_seen: meta.last_seen, game: meta.game });
- const av = $('#chatPeerAv');
- if (av) av.innerHTML = avatarWithStatus(meta.peer_nick || 'Игрок', meta.avatar, meta.online, meta.last_seen);
- if (stick || atBottom) scrollToBottom(true);
+const MODE_WORD = { coop: 'Кооператив', comp: 'Соревновательный', pvp: 'PvP' };
+
+function renderMessages(typingInfo) {
+  const box = $('#msgs'); if (!box) return;
+  const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 60 || box.scrollHeight < 60;
+  box.innerHTML = state.messages.map((m, i) => msgRowHtml(m, state.messages[i - 1])).join('')
+    + (typingInfo ? '<div class="typing" id="typingDot"><i></i><i></i><i></i></div>' : '');
+  const stateEl = $('#chatPeerState');
+  if (stateEl && !isGroup()) {
+    const c = conv();
+    stateEl.textContent = c.typing ? 'печатает...' : (c.presence_label || '');
+  }
+  if (isGroup()) {
+    const el = $('#typingNames');
+    if (el) el.textContent = Array.isArray(typingInfo) && typingInfo.length
+      ? typingInfo.join(', ') + (typingInfo.length > 1 ? ' печатают...' : ' печатает...') : '';
+  }
+  if (atBottom) scrollToBottom(true);
 }
 
 function dayLabel(iso) {
- const d = new Date(iso), now = new Date();
- const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
- const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
- const diff = Math.round((today - day) / 86400000);
- if (diff === 0) return 'Сегодня';
- if (diff === 1) return 'Вчера';
- return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  const d = new Date(iso), now = new Date();
+  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((today - day) / 86400000);
+  if (diff === 0) return 'Сегодня';
+  if (diff === 1) return 'Вчера';
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 }
 
+/* ---------- одно сообщение ---------- */
 function msgRowHtml(m, prev) {
- const meta = state.chatMeta.get(state.activeChat) || {};
- const nick = m.sender === 'me' ? (state.me ? state.me.nickname : 'Я') : (meta.peer_nick || 'Игрок');
- const avatarUrl = m.sender === 'me' ? myAvatar() : (meta.avatar || '');
- const sameDay = prev && dayLabel(prev.created_at) === dayLabel(m.created_at);
- const near = prev && (new Date(m.created_at) - new Date(prev.created_at)) < 7 * 60 * 1000;
- const grouped = Boolean(prev && prev.sender === m.sender && sameDay && near && !m.reply_to && !prev.deleted);
- const sep = (!prev || !sameDay) ? `<div class="day-sep">${esc(dayLabel(m.created_at))}</div>` : '';
- const quote = m.reply_to ? `<div class="msg-quote" onclick="jumpToMessage(${m.reply_to.id})">
- <b>${esc(m.reply_to.nick)}</b><span>${esc(m.reply_to.text)}</span></div>` : '';
- const head = grouped ? '' : `<div class="msg-head">
- <b style="color:${m.sender === 'me' ? 'var(--acc-2)' : '#fff'}">${esc(nick)}</b>
- <time>${clock(m.created_at)}</time>${m.edited_at ? '<span class="edited">изменено</span>' : ''}</div>`;
- const text = m.deleted
- ? '<div class="msg-text deleted">Сообщение удалено</div>'
- : `<div class="msg-text">${esc(m.text)}</div>`;
- const tools = m.deleted ? '' : `<div class="msg-tools">
- ${m.sender === 'me' ? '' : `<button onclick="replyToMessage(${m.id})" title="Ответить">Ответить</button>`}
- <button onclick="copyMessage(${m.id})" title="Скопировать">Копировать</button>
- ${m.sender === 'me' ? `<button onclick="editMessage(${m.id})" title="Изменить">Изменить</button>
- <button onclick="deleteMessage(${m.id})" title="Удалить">Удалить</button>` : ''}
- <button onclick="openMsgMenu(${m.id}, event.clientX, event.clientY)" title="Ещё">...</button>
- </div>`;
- const record = m.sender === 'me' && !m.deleted
- ? `<span class="record">${m.read ? 'прочитано' : 'отправлено'}</span>` : '';
- return `${sep}
- <div class="msg-row ${grouped ? 'grouped' : ''}" data-id="${m.id}"
- oncontextmenu="event.preventDefault();openMsgMenu(${m.id}, event.clientX, event.clientY)"
- ontouchstart="msgTouchStart(event, ${m.id})" ontouchend="msgTouchEnd()">
- <div class="mv">${grouped ? '' : avatarHtml(nick, avatarUrl, 'avatar')}</div>
- <div class="msg-main">${head}${quote}${text}${record}</div>
- ${tools}
- </div>`;
+  if (m.kind === 'system') {
+    return `<div class="sys-row" data-id="${m.id}"><span>${esc(m.text)}</span></div>`;
+  }
+  const c = conv();
+  const nick = m.sender === 'me' ? (state.me ? state.me.nickname : 'Я') : (m.nick || c.title || 'Игрок');
+  const avatarUrl = m.sender === 'me' ? myAvatar() : (m.avatar || '');
+  const sameDay = prev && dayLabel(prev.created_at) === dayLabel(m.created_at);
+  const near = prev && (new Date(m.created_at) - new Date(prev.created_at)) < 7 * 60 * 1000;
+  const grouped = Boolean(prev && prev.sender === m.sender && prev.kind !== 'system' && sameDay && near
+    && !m.reply_to && !prev.deleted && (m.kind === 'text' && (prev.kind === 'text' || !prev.kind)));
+  const sep = (!prev || !sameDay) ? `<div class="day-sep">${esc(dayLabel(m.created_at))}</div>` : '';
+  const quote = m.reply_to ? `<div class="msg-quote" onclick="jumpToMessage(${m.reply_to.id})">
+    <b>${esc(m.reply_to.nick)}</b><span>${esc(m.reply_to.text)}</span></div>` : '';
+  const head = grouped ? '' : `<div class="msg-head">
+    <b style="color:${m.sender === 'me' ? 'var(--acc-2)' : '#fff'}">${esc(nick)}</b>
+    <time>${clock(m.created_at)}</time>${m.edited ? '<span class="edited">изменено</span>' : ''}
+    ${m.pinned ? '<span class="pin-mark">закреплено</span>' : ''}</div>`;
+  const body = m.deleted
+    ? '<div class="msg-text deleted">Сообщение удалено</div>'
+    : cardOrText(m);
+  const tools = m.deleted ? '' : `<div class="msg-tools">
+    <button onclick="openReactionPicker(${m.id}, event)" title="Реакция">Реакция</button>
+    <button onclick="replyToMessage(${m.id})" title="Ответить">Ответить</button>
+    <button onclick="copyMessage(${m.id})" title="Скопировать">Копировать</button>
+    <button onclick="pinMessage(${m.id})" title="Закрепить">${m.pinned ? 'Открепить' : 'Закрепить'}</button>
+    ${m.sender === 'me' ? `<button onclick="editMessage(${m.id})" title="Изменить">Изменить</button>
+    <button onclick="deleteMessage(${m.id})" title="Удалить">Удалить</button>` : ''}
+    <button onclick="openMsgMenu(${m.id}, event.clientX, event.clientY)" title="Ещё">...</button>
+  </div>`;
+  const record = m.sender === 'me' && !m.deleted
+    ? `<span class="record">${m.read ? 'прочитано' : 'отправлено'}</span>` : '';
+  return `${sep}
+  <div class="msg-row ${grouped ? 'grouped' : ''} ${m.pinned ? 'pinned' : ''}" data-id="${m.id}"
+    oncontextmenu="event.preventDefault();openMsgMenu(${m.id}, event.clientX, event.clientY)"
+    ontouchstart="msgTouchStart(event, ${m.id})" ontouchend="msgTouchEnd()">
+    <div class="mv">${grouped ? '' : avatarHtml(nick, avatarUrl, 'avatar')}</div>
+    <div class="msg-main">${head}${quote}${body}${record}${reactionsHtml(m)}</div>
+    ${tools}
+  </div>`;
+}
+
+/* текст или игровая карточка */
+function cardOrText(m) {
+  if (m.kind === 'lfg') return lfgCardHtml(m);
+  if (m.kind === 'invite') return inviteCardHtml(m);
+  if (m.kind === 'poll') return pollCardHtml(m);
+  return `<div class="msg-text">${esc(m.text)}</div>`;
+}
+
+function lfgCardHtml(m) {
+  const meta = m.meta || {};
+  const p = m.party || {};
+  const member = p.is_member;
+  const rows = [meta.mode ? (MODE_WORD[meta.mode] || meta.mode) : '', meta.rank, meta.region,
+    meta.lang, meta.mic ? 'нужен микрофон' : ''].filter(Boolean);
+  return `<div class="card-lfg">
+    <div class="cl-top"><b>${esc(meta.game_short || meta.game_name || 'Игра')}</b>
+      <span>${esc(meta.game_name || '')}</span></div>
+    <div class="cl-need">Нужно игроков: <b>${meta.need || 1}</b>${p.size ? ` · в пати ${p.players || 0}/${p.size}` : ''}</div>
+    ${rows.length ? `<div class="cl-rows">${rows.map(r => `<span>${esc(r)}</span>`).join('')}</div>` : ''}
+    ${meta.note ? `<div class="cl-note">${esc(meta.note)}</div>` : ''}
+    <button class="btn sm ${member ? 'ghost' : 'primary'}" ${member ? 'disabled' : ''}
+      onclick="joinParty(${meta.party_id})">${member ? 'Ты в этом пати' : 'Присоединиться'}</button>
+  </div>`;
+}
+
+function inviteCardHtml(m) {
+  const meta = m.meta || {};
+  const st = meta.state || 'pending';
+  const answer = st === 'accepted' ? 'Приглашение принято' : st === 'declined' ? 'Приглашение отклонено' : '';
+  const canAnswer = !answer && m.sender !== 'me';
+  return `<div class="card-invite">
+    <div class="ci-top">Приглашение в игру</div>
+    <div class="ci-game">${esc(meta.game_name || 'Игра')}</div>
+    <div class="ci-rows">${[meta.mode ? (MODE_WORD[meta.mode] || meta.mode) : '', meta.rank, meta.region]
+      .filter(Boolean).map(r => `<span>${esc(r)}</span>`).join('')}</div>
+    <div class="ci-by">От ${esc(meta.by || m.nick || 'игрока')}</div>
+    ${canAnswer ? `<div class="ci-actions">
+      <button class="btn sm primary" onclick="answerInvite(${m.id}, 'accept')">Принять</button>
+      <button class="btn sm ghost" onclick="answerInvite(${m.id}, 'decline')">Отказаться</button></div>`
+    : `<div class="ci-state">${esc(answer || (m.sender === 'me' ? 'Ждём ответа' : 'Приглашение'))}</div>`}
+  </div>`;
+}
+
+function pollCardHtml(m) {
+  const p = m.poll || { options: [], votes: [] };
+  const total = Math.max(1, p.votes.reduce((s, v) => s + v, 0));
+  return `<div class="card-poll">
+    <div class="cp-q">${esc(p.question || 'Опрос')}</div>
+    ${(p.options || []).map((opt, i) => {
+      const v = p.votes[i] || 0;
+      const mine = p.my_choice === i;
+      return `<button class="poll-opt ${mine ? 'mine' : ''}" onclick="votePoll(${m.id}, ${i})">
+        <span class="po-bar" style="width:${Math.round(v / total * 100)}%"></span>
+        <span class="po-text">${esc(opt)}</span>
+        <span class="po-count">${v}</span></button>`;
+    }).join('')}
+    <div class="cp-foot">Всего голосов: ${p.total || 0}${p.my_choice != null ? ' · ты проголосовал' : ''}</div>
+  </div>`;
+}
+
+function reactionsHtml(m) {
+  const list = m.reactions || [];
+  if (!list.length) return '';
+  return `<div class="rx-row">${list.map(r =>
+    `<button class="rx-chip ${r.mine ? 'mine' : ''}" onclick="toggleReaction(${m.id}, '${esc(r.value)}')">
+      ${esc(r.value)} <b>${r.count}</b></button>`).join('')}</div>`;
 }
 
 /* долгое нажатие на телефоне — то же меню */
 let touchTimer = null;
 function msgTouchStart(event, id) {
- if (event.touches && event.touches.length > 1) return;
- const t = event.touches[0];
- touchTimer = setTimeout(() => openMsgMenu(id, t.clientX, t.clientY), 450);
+  if (event.touches && event.touches.length > 1) return;
+  const t = event.touches[0];
+  touchTimer = setTimeout(() => openMsgMenu(id, t.clientX, t.clientY), 450);
 }
 function msgTouchEnd() { if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; } }
 
+/* ---------- действия с сообщениями ---------- */
+function replyToMessage(id) {
+  const m = state.msgById.get(id); if (!m) return;
+  cancelEdit();
+  state.replyTo = m;
+  renderComposerBanner();
+  const ta = $('#msgInput'); if (ta) ta.focus();
+}
+function cancelReply() { if (!state.replyTo) return; state.replyTo = null; renderComposerBanner(); }
+function editMessage(id) {
+  const m = state.msgById.get(id); if (!m || m.sender !== 'me' || m.deleted) return;
+  cancelReply();
+  state.editingId = id;
+  const ta = $('#msgInput');
+  ta.value = m.text || ''; autoGrow(ta); ta.focus();
+  renderComposerBanner();
+}
+function cancelEdit() {
+  if (!state.editingId) return;
+  state.editingId = null;
+  const ta = $('#msgInput'); if (ta) { ta.value = ''; autoGrow(ta); }
+  renderComposerBanner();
+}
+function renderComposerBanner() {
+  const box = $('#composerBanner'); if (!box) return;
+  if (state.editingId) {
+    const m = state.msgById.get(state.editingId) || {};
+    box.innerHTML = `<div class="composer-banner">
+      <span>Изменение сообщения: <b>${esc((m.text || '').slice(0, 80))}</b></span>
+      <button onclick="cancelEdit()">Отмена</button></div>`;
+    return;
+  }
+  if (state.replyTo) {
+    const m = state.replyTo;
+    const who = m.sender === 'me' ? 'себе' : (m.nick || conv().title || 'игроку');
+    box.innerHTML = `<div class="composer-banner">
+      <span>Ответ ${esc(who)}: <b>${esc((m.text || '').slice(0, 80))}</b></span>
+      <button onclick="cancelReply()">Отмена</button></div>`;
+    return;
+  }
+  box.innerHTML = '';
+}
+async function copyMessage(id) {
+  const m = state.msgById.get(id); if (!m) return;
+  await copyText(m.text, 'Сообщение скопировано');
+}
+async function deleteMessage(id) {
+  const m = state.msgById.get(id); if (!m || m.sender !== 'me') return;
+  if (!confirm('Удалить сообщение? Оно исчезнет у всех участников.')) return;
+  try {
+    await api(convUrl('messages/' + id + '/delete'), { method: 'POST' });
+    if (state.editingId === id) cancelEdit();
+    await fetchMessages(false, true);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function toggleReaction(id, value) {
+  try {
+    await api(convUrl('messages/' + id + '/react'), { method: 'POST', body: { value } });
+    await fetchMessages(false, true);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function pinMessage(id) {
+  try {
+    const d = await api(convUrl('messages/' + id + '/pin'), { method: 'POST' });
+    toast(d.pinned ? 'Закреплено' : 'Откреплено');
+    await fetchMessages(false, true);
+    if (isGroup()) loadAside();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+function openReactionPicker(id, ev) {
+  if (ev) ev.stopPropagation();
+  closeMsgMenu();
+  const menu = document.createElement('div');
+  menu.className = 'rx-picker'; menu.id = 'msgMenu';
+  menu.innerHTML = RX_VALUES.map(v => `<button onclick="toggleReaction(${id}, '${v}')">${v}</button>`).join('');
+  const r = ev && ev.target ? ev.target.getBoundingClientRect() : { left: 20, top: 120, width: 0 };
+  menu.style.position = 'fixed';
+  menu.style.top = Math.max(10, r.top - 44) + 'px';
+  menu.style.left = Math.max(10, Math.min(r.left, window.innerWidth - 300)) + 'px';
+  menu.style.zIndex = '60';
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', closeMsgMenu, { once: true }), 30);
+}
+function openMsgMenu(id, x, y) {
+  const m = state.msgById.get(id); if (!m) return;
+  closeMsgMenu();
+  const mine = m.sender === 'me' && !m.deleted;
+  const items = [];
+  if (!m.deleted) items.push(['Ответить', () => replyToMessage(id)]);
+  if (!m.deleted && m.text) items.push(['Копировать текст', () => copyMessage(id)]);
+  if (!m.deleted) items.push([m.pinned ? 'Открепить' : 'Закрепить', () => pinMessage(id)]);
+  if (mine) {
+    if (m.kind === 'text' && m.text) items.push(['Изменить', () => editMessage(id)]);
+    items.push(['Удалить', () => deleteMessage(id)]);
+  }
+  if (!items.length) return;
+  const menu = document.createElement('div');
+  menu.className = 'msg-tools'; menu.id = 'msgMenu';
+  menu.style.display = 'flex';
+  menu.style.position = 'fixed';
+  menu.style.top = Math.max(10, Math.min(y, window.innerHeight - 220)) + 'px';
+  menu.style.left = Math.max(10, Math.min(x, window.innerWidth - 190)) + 'px';
+  menu.style.zIndex = '60';
+  menu.innerHTML = items.map((it, i) => `<button data-i="${i}">${esc(it[0])}</button>`).join('');
+  items.forEach((it, i) => { menu.querySelector(`button[data-i="${i}"]`).onclick = () => { closeMsgMenu(); it[1](); }; });
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', closeMsgMenu, { once: true }), 30);
+}
+function closeMsgMenu() { const m = $('#msgMenu'); if (m) m.remove(); }
+
+/* ---------- композер: быстрые фразы, «+», отправка ---------- */
+function renderQuickChips() {
+  const box = $('#quickChips'); if (!box) return;
+  box.innerHTML = QUICK_PHRASES.map(p =>
+    `<button class="chip" onclick="quickPhrase('${esc(p)}')">${esc(p)}</button>`).join('');
+}
+function quickPhrase(text) {
+  const ta = $('#msgInput'); if (!ta) return;
+  ta.value = ta.value ? (ta.value + ' ' + text) : text;
+  autoGrow(ta); ta.focus();
+}
+function openPlusMenu(ev) {
+  if (ev) ev.stopPropagation();
+  closeMsgMenu();
+  const menu = document.createElement('div');
+  menu.className = 'plus-menu'; menu.id = 'msgMenu';
+  const items = [
+    ['Найти игроков', () => openLfgForm()],
+    ['Приглашение в игру', () => openGameInviteForm()],
+  ];
+  if (isGroup()) items.push(['Опрос', () => openPollForm()]);
+  items.push(['Быстрые фразы', () => { renderQuickChips(); toast('Фразы — под строкой ввода'); }]);
+  menu.innerHTML = items.map((it, i) => `<button data-i="${i}">${esc(it[0])}</button>`).join('');
+  const r = (ev && ev.target ? ev.target.getBoundingClientRect() : { left: 30, bottom: 200 });
+  menu.style.position = 'fixed';
+  menu.style.left = Math.max(10, r.left) + 'px';
+  menu.style.bottom = Math.max(10, window.innerHeight - r.bottom + 8) + 'px';
+  menu.style.zIndex = '60';
+  menu.style.display = 'flex';
+  document.body.appendChild(menu);
+  items.forEach((it, i) => { menu.querySelector(`button[data-i="${i}"]`).onclick = () => { closeMsgMenu(); it[1](); }; });
+  setTimeout(() => document.addEventListener('click', closeMsgMenu, { once: true }), 30);
+}
+
 async function sendMessage() {
- const input = $('#msgInput'); const text = input.value.trim();
- if (!text || !state.activeChat) return;
- // правка существующего сообщения
- if (state.editingId) {
- const id = state.editingId;
- try {
- await api('/api/chats/' + state.activeChat + '/messages/' + id + '/edit', { method: 'POST', body: { text } });
- cancelEdit(); input.value = ''; autoGrow(input);
- await fetchMessages(false, true);
- } catch (e) { toast(esc(e.message), 'err'); }
- return;
- }
- const payload = { text };
- if (state.replyTo) payload.reply_to = state.replyTo.id;
- input.value = ''; autoGrow(input);
- const url = '/api/chats/' + state.activeChat + '/messages';
- try {
- await api(url, { method: 'POST', body: payload });
- state.replyTo = null; renderComposerBanner();
- } catch (e) {
- // нет сети — кладём в очередь и отправим автоматически
- state.outbox.push({ url, body: payload, at: Date.now() });
- saveOutbox();
- const awaitSync = swRegistration().then(reg => reg && reg.sync ? reg.sync.register('squadup-outbox').catch(() => {}) : null);
- toast('Нет сети — сообщение отправится, как только появится связь');
- input.value = text;
- await awaitSync;
- return;
- }
- await fetchMessages();
- const id = state.activeChat;
- const meta = state.chatMeta.get(id) || {};
- loadChats();
- if (meta.peer_user_id) return; // живой собеседник ответит сам — ждём его (опрос раз в 4 с)
- // гостевая анкета: показываем «печатает…» и просим сервер сгенерировать ответ
- const box = $('#msgs');
- if (!box) return;
- const typing = document.createElement('div');
- typing.className = 'typing'; typing.innerHTML = '<i></i><i></i><i></i>';
- box.appendChild(typing); scrollBottom(box);
- setTimeout(async () => {
- typing.remove();
- await api('/api/chats/' + id + '/simulate-reply', { method: 'POST' }).catch(() => {});
- if (state.activeChat === id) { await fetchMessages(); api('/api/chats/' + id + '/read', { method: 'POST' }).catch(() => {}); }
- loadChats();
- }, 1600 + Math.random() * 1600);
+  const input = $('#msgInput'); const text = input.value.trim();
+  if (!text || !state.activeChat) return;
+  if (state.editingId) {
+    const id = state.editingId;
+    try {
+      await api(convUrl('messages/' + id + '/edit'), { method: 'POST', body: { text } });
+      cancelEdit(); input.value = ''; autoGrow(input);
+      await fetchMessages(false, true);
+    } catch (e) { toast(esc(e.message), 'err'); }
+    return;
+  }
+  const payload = { text };
+  if (state.replyTo) payload.reply_to = state.replyTo.id;
+  input.value = ''; autoGrow(input);
+  const url = convUrl('messages');
+  try {
+    await api(url, { method: 'POST', body: payload });
+    state.replyTo = null; renderComposerBanner();
+  } catch (e) {
+    state.outbox.push({ url, body: payload, at: Date.now() });
+    saveOutbox();
+    const awaitSync = swRegistration().then(reg => reg && reg.sync ? reg.sync.register('squadup-outbox').catch(() => {}) : null);
+    toast('Нет сети — сообщение отправится, как только появится связь');
+    input.value = text;
+    await awaitSync;
+    return;
+  }
+  await fetchMessages();
+  loadChats();
+  const meta = conv();
+  if (isGroup() || meta.type !== 'dm') return;
+  const dmMeta = state.chatMeta.get(state.activeChat) || {};
+  if (dmMeta.peer_user_id) return;   // живой собеседник ответит сам
+  const box = $('#msgs');
+  if (!box) return;
+  const typing = document.createElement('div');
+  typing.className = 'typing'; typing.innerHTML = '<i></i><i></i><i></i>';
+  box.appendChild(typing); scrollBottom(box);
+  setTimeout(async () => {
+    typing.remove();
+    await api('/api/chats/' + state.activeChat + '/simulate-reply', { method: 'POST' }).catch(() => {});
+    fetchMessages();
+  }, 1200);
+}
+
+/* ---------- шапка пати: готовность и состав ---------- */
+function renderReadyBlock() {
+  const box = $('#readyBlock'); if (!box) return;
+  const p = state.party;
+  if (!isGroup() || !p) { box.style.display = 'none'; return; }
+  const members = p.members || [];
+  const ready = members.filter(m => m.ready).length;
+  box.style.display = '';
+  box.innerHTML = `
+    <div class="ready-row">
+      <b>Готовность ${ready}/${members.length}</b>
+      ${members.map(m => `<span class="ready-chip ${m.ready ? 'ready-on' : 'ready-off'}">
+        ${esc(m.nick)}${m.is_leader ? ' · лидер' : ''} · ${m.ready ? 'готов' : 'ждём'}</span>`).join('')}
+      <span style="flex:1"></span>
+      ${p.status === 'playing' ? '<span class="ready-chip ready-on">Игра идёт</span>'
+        : `<button class="btn sm ghost" onclick="setReady(${!myReady()})">${myReady() ? 'Снять готовность' : 'Я готов'}</button>
+           ${p.is_leader ? `<button class="btn sm primary" onclick="startPartyGame()">Начать игру</button>` : ''}`}
+    </div>`;
+}
+function myReady() {
+  const p = state.party; if (!p) return false;
+  const me = (p.members || []).find(m => m.is_me);
+  return Boolean(me && me.ready);
+}
+async function setReady(ready) {
+  try {
+    await api('/api/parties/' + state.party.id + '/ready', { method: 'POST', body: { ready } });
+    await fetchMessages(false, true);
+    if (isGroup()) loadAside();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function startPartyGame() {
+  try {
+    await api('/api/parties/' + state.party.id + '/start', { method: 'POST' });
+    toast('Игра началась — состав в сборе');
+    await fetchMessages(false, true);
+    if (isGroup()) loadAside();
+  } catch (e) {
+    if (String(e.message).indexOf('Ждём готовности') === 0) {
+      if (confirm(e.message + '\nВсё равно начать?')) {
+        try {
+          await api('/api/parties/' + state.party.id + '/start', { method: 'POST', body: { force: true } });
+          await fetchMessages(false, true);
+        } catch (e2) { toast(esc(e2.message), 'err'); }
+      }
+    } else { toast(esc(e.message), 'err'); }
+  }
+}
+
+/* ---------- правая панель ---------- */
+function togglePanel() {
+  const aside = $('#chatAside'); if (!aside) return;
+  const hidden = aside.style.display === 'none';
+  aside.style.display = hidden ? 'flex' : 'none';
+  if (hidden || !aside.innerHTML) loadAside();
+}
+
+async function loadAside() {
+  const aside = $('#chatAside'); if (!aside) return;
+  if (!isGroup()) { renderAside(); return; }
+  try {
+    const panels = await api(convUrl('panels'));
+    state.panels = panels;
+  } catch (e) { state.panels = { pins: [], media: [], links: [], files: [] }; }
+  try {
+    const d = await api('/api/groups/' + state.activeChat);
+    state.members = d.chat ? d.chat.members : state.members;
+    state.party = d.party || null;
+  } catch (e) { /* состав уже есть из сообщений */ }
+  renderAside();
+}
+
+function renderAside() {
+  const aside = $('#chatAside'); if (!aside) return;
+  const tabs = isGroup()
+    ? [['members', 'Участники'], ['pins', 'Закреплённые'], ['links', 'Ссылки'], ['media', 'Медиа']]
+    : [['members', 'Профиль'], ['pins', 'Закреплённые'], ['links', 'Ссылки'], ['media', 'Медиа']];
+  if (state.panelTab !== 'members' && !isGroup()) state.panelTab = 'members';
+  aside.style.display = '';
+  aside.innerHTML = `<div class="aside-tabs">${tabs.map(([k, label]) =>
+    `<button class="${state.panelTab === k ? 'on' : ''}" onclick="setPanelTab('${k}')">${label}</button>`).join('')}</div>
+    <div class="aside-body">${asideBodyHtml()}</div>`;
+}
+
+function setPanelTab(tab) { state.panelTab = tab; renderAside(); }
+
+function asideBodyHtml() {
+  const p = state.panels || { pins: [], links: [], media: [], files: [] };
+  if (state.panelTab === 'pins') {
+    return p.pins && p.pins.length
+      ? p.pins.map(x => `<div class="aside-item" onclick="jumpToMessage(${x.id})">
+          <b>${esc(x.nick)}</b><span>${esc(x.text)}</span>
+          <button class="btn sm ghost" onclick="event.stopPropagation();pinMessage(${x.id})">Открепить</button></div>`).join('')
+      : '<div class="hint">Пока ничего не закреплено. Закрепить можно из меню сообщения.</div>';
+  }
+  if (state.panelTab === 'links') {
+    const links = (p.links || []).concat(p.files || []);
+    return links.length
+      ? links.map(x => `<div class="aside-item"><b>${esc(x.nick)}</b>
+          <span><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.url)}</a></span></div>`).join('')
+      : '<div class="hint">Ссылок в переписке пока нет.</div>';
+  }
+  if (state.panelTab === 'media') {
+    return (p.media || []).length
+      ? `<div class="media-grid">${p.media.map(x =>
+          `<img src="${esc(x.url)}" alt="${esc(x.name || 'вложение')}" onclick="window.open('${esc(x.url)}','_blank')">`).join('')}</div>`
+      : '<div class="hint">Общих фото и клипов пока нет. Поделиться медиа можно из меню «+» в строке ввода.</div>';
+  }
+  // состав / профиль
+  if (!isGroup()) {
+    const c = conv();
+    return `<div class="aside-card">
+      <div class="ac-top">${avatarHtml(c.title || 'Игрок', c.avatar, 'avatar big')}</div>
+      <b>${esc(c.title || 'Игрок')}</b>
+      <div class="hint">${esc(c.presence_label || '')}</div>
+      <div class="ac-actions">
+        ${c.listing_id ? `<button class="btn sm" onclick="openProfile(${c.listing_id})">Профиль</button>` : ''}
+        <button class="btn sm primary" onclick="inviteToParty(${JSON.stringify(c.title || '')})">В пати</button>
+        <button class="btn sm ghost danger" onclick="blockChatUser(${state.activeChat})">Заблокировать</button>
+      </div></div>`;
+  }
+  const members = state.party ? state.party.members : (state.members || []);
+  const leaderId = state.party ? state.party.leader_user_id : null;
+  return `<div class="members-list">${members.map(m => `
+    <div class="member-row">
+      ${avatarHtml(m.nick, m.avatar, 'avatar sm')}
+      <div class="mr-main">
+        <b>${esc(m.nick)}${m.is_me ? ' (ты)' : ''}${leaderId === m.user_id ? ' · лидер' : ''}</b>
+        <span>${esc(PRESENCE_WORD[m.state] || '')}${state.party && state.party.status === 'open' ? ' · ' + (m.ready ? 'готов' : 'ждём') : ''}</span>
+      </div>
+      ${state.party && state.party.is_leader && !m.is_me ? `<div class="mr-actions">
+        <button class="btn sm ghost" onclick="partyTransfer('${m.user_id}')" title="Сделать лидером">Лидер</button>
+        <button class="btn sm ghost" onclick="partyKick('${m.user_id}')" title="Исключить">Убрать</button></div>` : ''}
+    </div>`).join('')}
+    ${state.party && state.party.status === 'open' ? `<button class="btn sm ghost" style="width:100%;margin-top:10px"
+      onclick="openPartyInvite()">Позвать ещё</button>` : ''}
+    ${state.party && state.party.is_leader ? `<button class="btn sm ghost" style="width:100%;margin-top:8px"
+      onclick="closeParty()">Завершить сессию</button>` : ''}
+    ${state.party && !state.party.is_me ? `<button class="btn sm ghost" style="width:100%;margin-top:8px"
+      onclick="leaveParty()">Выйти из пати</button>` : ''}
+  </div>`;
+}
+function renderMembers() { if (state.panelTab === 'members') renderAside(); }
+
+/* ---------- поиск по переписке ---------- */
+function toggleChatSearch() {
+  state.chatSearchOpen = !state.chatSearchOpen;
+  const box = $('#chatSearchBox');
+  if (!box) return;
+  if (!state.chatSearchOpen) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="chat-search">
+    <input id="chatSearchInput" placeholder="Найти в переписке..." oninput="runChatSearch()">
+    <button class="btn sm ghost" onclick="toggleChatSearch()">Закрыть</button>
+  </div>
+  <div id="chatSearchHits"></div>`;
+  $('#chatSearchInput').focus();
+}
+async function runChatSearch() {
+  const q = ($('#chatSearchInput').value || '').trim().toLowerCase();
+  const hits = $('#chatSearchHits'); if (!hits) return;
+  if (q.length < 2) { hits.innerHTML = ''; return; }
+  try {
+    let items = [];
+    if (isGroup()) {
+      if (!state.messages.length) await fetchMessages(false, true);
+      items = state.messages.filter(m => (m.text || '').toLowerCase().includes(q) && !m.deleted)
+        .map(m => ({ id: m.id, nick: m.sender === 'me' ? (state.me ? state.me.nickname : 'Я') : (m.nick || 'Игрок'),
+                     text: m.text, created_at: m.created_at }));
+    } else {
+      const data = await api('/api/chats/' + state.activeChat + '/search?q=' + encodeURIComponent(q));
+      items = data.items;
+    }
+    hits.innerHTML = items.length
+      ? `<div class="search-hits">${items.map(m => `
+        <div class="search-hit" onclick="jumpToMessage(${m.id})">
+          <b>${esc(m.nick)} · ${timeAgo(m.created_at)}</b>
+          <span>${esc(m.text)}</span></div>`).join('')}</div>`
+      : '<div class="search-hits"><div class="search-hit"><span>Ничего не нашлось</span></div></div>';
+  } catch (e) { hits.innerHTML = ''; }
+}
+async function jumpToMessage(id) {
+  if (!state.messages.length || !state.msgById.has(id)) {
+    state.loadingAll = true;
+    await fetchMessages(false, true);
+    state.loadingAll = false;
+  }
+  const row = document.querySelector('.msg-row[data-id="' + id + '"]');
+  if (!row) { toast('Сообщение не найдено', 'err'); return; }
+  row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  row.classList.add('flash');
+  setTimeout(() => row.classList.remove('flash'), 1800);
+}
+
+/* ---------- запросы на переписку ---------- */
+async function acceptRequest(id) {
+  try { await api('/api/chats/' + id + '/accept', { method: 'POST' }); toast('Переписка открыта'); await loadChats(); }
+  catch (e) { toast(esc(e.message), 'err'); }
+}
+async function ignoreRequest(id) {
+  if (!confirm('Скрыть это сообщение? Диалог удалится, игрок об этом не узнает.')) return;
+  try { await api('/api/chats/' + id + '/ignore', { method: 'POST' }); toast('Скрыто'); await loadChats(); }
+  catch (e) { toast(esc(e.message), 'err'); }
+}
+async function blockRequest(id) {
+  try { await api('/api/chats/' + id + '/ignore', { method: 'POST' }); await blockChatUser(id); }
+  catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- пати: присоединиться, позвать, выйти ---------- */
+async function joinParty(partyId) {
+  try {
+    const d = await api('/api/parties/' + partyId + '/join', { method: 'POST' });
+    toast('Ты в пати');
+    await loadChats();
+    await openConv('group', d.chat_id);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function openPartyInvite() {
+  openModal(`<div class="modal-head"><h3>Позвать в пати</h3>
+    <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-top:0">Введи ник игрока из SQUADUP — он появится в этом пати и в чате.</p>
+      <input class="inp" id="partyInviteNick" placeholder="Ник игрока">
+      <button class="btn primary" style="width:100%;margin-top:12px" onclick="submitPartyInvite()">Позвать</button>
+      <div id="partyInviteResult" class="hint"></div>
+    </div>`);
+}
+async function submitPartyInvite() {
+  const nick = ($('#partyInviteNick').value || '').trim();
+  if (!nick) return;
+  try {
+    await api('/api/parties/' + state.party.id + '/invite', { method: 'POST', body: { nick } });
+    $('#partyInviteResult').textContent = 'Приглашение отправлено: ' + nick;
+    await fetchMessages(false, true);
+    loadAside();
+  } catch (e) { $('#partyInviteResult').textContent = e.message; }
+}
+async function partyKick(userId) {
+  try { await api('/api/parties/' + state.party.id + '/kick', { method: 'POST', body: { user_id: userId } });
+    await fetchMessages(false, true); loadAside(); } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function partyTransfer(userId) {
+  try { await api('/api/parties/' + state.party.id + '/transfer', { method: 'POST', body: { user_id: userId } });
+    await fetchMessages(false, true); loadAside(); } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function leaveParty() {
+  if (!confirm('Выйти из пати?')) return;
+  try { await api('/api/parties/' + state.party.id + '/leave', { method: 'POST' });
+    toast('Ты вышел из пати'); closeChatWindow(); } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function closeParty() {
+  if (!confirm('Завершить сессию? Состав сохранится в истории — можно будет позвать всех снова.')) return;
+  try {
+    const d = await api('/api/parties/' + state.party.id + '/close', { method: 'POST' });
+    toast(d.session ? ('Сессия завершена · ' + d.session.minutes + ' мин') : 'Сессия завершена');
+    await fetchMessages(false, true); loadAside();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function inviteToParty(nick) {
+  try {
+    const d = await api('/api/parties', { method: 'GET' });
+    const mine = (d.items || []).find(p => p.is_leader && p.status === 'open');
+    if (mine) {
+      await api('/api/parties/' + mine.id + '/invite', { method: 'POST', body: { nick } });
+      toast('Позвал ' + nick + ' в пати');
+      return;
+    }
+    openCreateParty((gameId) => api('/api/parties', { method: 'POST', body: { game_id: gameId, size: 5 } })
+      .then(res => api('/api/parties/' + res.party_id + '/invite', { method: 'POST', body: { nick } }))
+      .then(() => { toast('Пати создано, ' + nick + ' позван'); loadChats(); }));
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- меню разговора: без звука, выйти, завершить ---------- */
+function openConvMenu(ev) {
+  if (ev) ev.stopPropagation();
+  closeMsgMenu();
+  const items = [];
+  const c = conv();
+  if (!isGroup() && c.listing_id) items.push(['Профиль игрока', () => openProfile(c.listing_id)]);
+  if (isGroup() && state.party) items.push(['Позвать в пати', () => openPartyInvite()]);
+  if (!isGroup()) items.push(['Позвать в пати', () => inviteToParty(c.title || '')]);
+  items.push(['Голосовой чат', () => startVoiceSoon()]);
+  items.push(['Поиск по переписке', () => toggleChatSearch()]);
+  if (isGroup()) items.push(['Панель участников', () => togglePanel()]);
+  items.push(
+    ['Без звука на 1 час', () => muteConv(60)],
+    ['Без звука на 8 часов', () => muteConv(480)],
+    ['Без звука на 24 часа', () => muteConv(1440)],
+    ['Включить звук', () => muteConv(0)],
+  );
+  if (isGroup() && state.party) {
+    if (state.party.status === 'open' && state.party.is_leader) items.push(['Завершить сессию', () => closeParty()]);
+    if (state.party.is_member) items.push(['Выйти из пати', () => leaveParty()]);
+  }
+  if (!isGroup()) items.push(['Заблокировать игрока', () => blockChatUser(state.activeChat)]);
+  const menu = document.createElement('div');
+  menu.className = 'msg-tools'; menu.id = 'msgMenu';
+  menu.style.display = 'flex'; menu.style.position = 'fixed';
+  const r = (ev && ev.target ? ev.target.getBoundingClientRect() : { left: 30, bottom: 200 });
+  menu.style.left = Math.max(10, Math.min(r.left, window.innerWidth - 240)) + 'px';
+  menu.style.top = Math.max(10, Math.min(r.bottom + 6, window.innerHeight - 260)) + 'px';
+  menu.style.zIndex = '60';
+  menu.innerHTML = items.map((it, i) => `<button data-i="${i}">${esc(it[0])}</button>`).join('');
+  document.body.appendChild(menu);
+  items.forEach((it, i) => { menu.querySelector(`button[data-i="${i}"]`).onclick = () => { closeMsgMenu(); it[1](); }; });
+  setTimeout(() => document.addEventListener('click', closeMsgMenu, { once: true }), 30);
+}
+async function muteConv(minutes) {
+  try {
+    await api(convUrl('mute'), { method: 'POST', body: { minutes } });
+    toast(minutes ? 'Уведомления выключены' : 'Уведомления включены');
+    loadChats();
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- «Найти игроков»: карточка LFG ---------- */
+function gameOptionsHtml(selected) {
+  const games = (state.meta && state.meta.games) || [];
+  return games.map(g => `<option value="${g.id}" ${g.id === selected ? 'selected' : ''}>${esc(g.name)}</option>`).join('');
+}
+function openLfgForm() {
+  const myGames = ((state.me && state.me.listing && state.me.listing.games) || []);
+  const first = myGames.length ? myGames[0].game_id : '';
+  openModal(`<div class="modal-head"><h3>Найти игроков</h3>
+    <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-top:0">Создаём пати и кладём карточку в чат: игроки увидят, кого ищем, и присоединятся одним нажатием.</p>
+      <label class="lbl">Игра</label>
+      <select class="inp" id="lfgGame">${gameOptionsHtml(first)}</select>
+      <div class="form-grid" style="margin-top:12px">
+        <div><label class="lbl">Режим</label>
+          <select class="inp" id="lfgMode"><option value="comp">Соревновательный</option>
+          <option value="coop">Кооператив</option><option value="">Любой</option></select></div>
+        <div><label class="lbl">Регион</label><input class="inp" id="lfgRegion" placeholder="EU" maxlength="20"></div>
+        <div><label class="lbl">Ранг</label><input class="inp" id="lfgRank" placeholder="Diamond+" maxlength="20"></div>
+        <div><label class="lbl">Язык</label><input class="inp" id="lfgLang" value="Русский" maxlength="20"></div>
+        <div><label class="lbl">Нужно игроков</label><input class="inp" id="lfgNeed" type="number" min="1" max="9" value="2"></div>
+        <div><label class="lbl">Всего в пати</label><input class="inp" id="lfgSize" type="number" min="2" max="10" value="3"></div>
+      </div>
+      <label class="lbl" style="margin-top:12px">Микрофон</label>
+      <div class="chips-wrap"><button class="chip on" id="lfgMic" data-on="1" onclick="toggleChip(this)">Нужен микрофон</button></div>
+      <label class="lbl" style="margin-top:12px">Комментарий</label>
+      <input class="inp" id="lfgNote" maxlength="120" placeholder="Например: спокойные катки, без токсичности">
+      <div id="lfgErr" class="hint" style="color:#ffb3c9"></div>
+      <button class="btn primary" style="width:100%;margin-top:14px" onclick="submitLfg()">Показать карточку</button>
+    </div>`);
+}
+function toggleChip(el) {
+  const on = el.dataset.on === '1';
+  el.dataset.on = on ? '0' : '1';
+  el.classList.toggle('on', !on);
+}
+async function submitLfg() {
+  const body = {
+    game_id: $('#lfgGame').value,
+    mode: $('#lfgMode').value,
+    region: ($('#lfgRegion').value || '').trim(),
+    rank: ($('#lfgRank').value || '').trim(),
+    lang: ($('#lfgLang').value || '').trim(),
+    need: parseInt($('#lfgNeed').value, 10) || 1,
+    size: parseInt($('#lfgSize').value, 10) || 3,
+    mic: $('#lfgMic').dataset.on === '1',
+    note: ($('#lfgNote').value || '').trim(),
+  };
+  if (state.activeChat) { body.chat_kind = isGroup() ? 'group' : 'dm'; body.chat_id = state.activeChat; }
+  try {
+    const d = await api('/api/lfg', { method: 'POST', body });
+    closeModal();
+    toast('Карточка поиска игроков опубликована');
+    await loadChats();
+    if (state.activeChat && isGroup()) await fetchMessages(false, true);
+    else if (state.activeChat) await fetchMessages(false, true);
+    else await openConv('group', d.chat_id);
+  } catch (e) { $('#lfgErr').textContent = e.message; }
+}
+
+/* ---------- приглашение в игру карточкой ---------- */
+function openGameInviteForm() {
+  if (!state.activeChat || isGroup()) { toast('Приглашение в игру отправляют в личном диалоге', 'err'); return; }
+  openModal(`<div class="modal-head"><h3>Приглашение в игру</h3>
+    <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-top:0">Игрок получит карточку с игрой — принять или отказаться он сможет прямо в чате.</p>
+      <label class="lbl">Игра</label>
+      <select class="inp" id="giGame">${gameOptionsHtml('')}</select>
+      <div class="form-grid" style="margin-top:12px">
+        <div><label class="lbl">Режим</label>
+          <select class="inp" id="giMode"><option value="comp">Соревновательный</option>
+          <option value="coop">Кооператив</option><option value="">Любой</option></select></div>
+        <div><label class="lbl">Ранг</label><input class="inp" id="giRank" placeholder="Diamond+" maxlength="20"></div>
+        <div><label class="lbl">Регион</label><input class="inp" id="giRegion" placeholder="EU" maxlength="20"></div>
+      </div>
+      <label class="lbl" style="margin-top:12px">Сообщение</label>
+      <input class="inp" id="giNote" maxlength="120" placeholder="Например: го пару каток сейчас">
+      <button class="btn primary" style="width:100%;margin-top:14px" onclick="submitGameInvite()">Отправить приглашение</button>
+    </div>`);
+}
+async function submitGameInvite() {
+  try {
+    await api('/api/chats/' + state.activeChat + '/game-invite', { method: 'POST', body: {
+      game_id: $('#giGame').value, mode: $('#giMode').value, rank: ($('#giRank').value || '').trim(),
+      region: ($('#giRegion').value || '').trim(), note: ($('#giNote').value || '').trim(),
+    } });
+    closeModal();
+    toast('Приглашение отправлено');
+    await fetchMessages(false, true);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function answerInvite(id, what) {
+  try {
+    await api('/api/chats/' + state.activeChat + '/messages/' + id + '/invite-' + what, { method: 'POST' });
+    toast(what === 'accept' ? 'Приглашение принято — можно договариваться' : 'Приглашение отклонено');
+    await fetchMessages(false, true);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- опрос ---------- */
+function openPollForm() {
+  openModal(`<div class="modal-head"><h3>Опрос</h3>
+    <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+    <div class="modal-body">
+      <label class="lbl">Вопрос</label>
+      <input class="inp" id="pollQ" value="Во сколько играем?" maxlength="120">
+      <label class="lbl" style="margin-top:12px">Варианты (по одному в строке)</label>
+      <textarea class="inp" id="pollOpts" rows="4">19:00
+20:00
+21:00</textarea>
+      <button class="btn primary" style="width:100%;margin-top:14px" onclick="submitPoll()">Создать опрос</button>
+    </div>`);
+}
+async function submitPoll() {
+  const q = ($('#pollQ').value || '').trim();
+  const options = ($('#pollOpts').value || '').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 8);
+  if (!q || options.length < 2) { toast('Нужен вопрос и хотя бы два варианта', 'err'); return; }
+  try {
+    await api(convUrl('messages'), { method: 'POST', body: { kind: 'poll', text: q, meta: { question: q, options } } });
+    closeModal();
+    await fetchMessages(false, true);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+async function votePoll(id, choice) {
+  try {
+    await api(convUrl('messages/' + id + '/vote'), { method: 'POST', body: { choice } });
+    await fetchMessages(false, true);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- поиск игроков: открытые пати ---------- */
+async function openLfgBoard() {
+  openModal(`<div class="modal-head"><h3>Кто ищет игроков</h3>
+    <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+    <div class="modal-body" id="lfgBoard">Загрузка…</div>`);
+  const box = $('#lfgBoard');
+  try {
+    const d = await api('/api/parties');
+    if (!d.items.length) {
+      box.innerHTML = `<div class="hint">Пока никто не собирает пати. Создай своё — игроки увидят карточку в поиске.</div>
+        <button class="btn primary" style="width:100%;margin-top:12px" onclick="closeModal();openCreateParty()">Создать пати</button>`;
+      return;
+    }
+    box.innerHTML = d.items.map(p => `<div class="board-card">
+      <div class="bc-top"><b>${esc(p.game_name)}</b><span>${p.players}/${p.size}</span></div>
+      <div class="bc-rows">${[MODE_WORD[p.mode] || '', p.rank, p.region, p.lang, p.mic ? 'микрофон' : '']
+        .filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</div>
+      <div class="bc-by">Лидер: ${esc((p.members.find(m => m.is_leader) || {}).nick || 'игрок')}</div>
+      ${p.note ? `<div class="bc-note">${esc(p.note)}</div>` : ''}
+      ${p.is_member ? '<div class="bc-state">Ты в этом пати</div>'
+        : `<button class="btn sm primary" onclick="closeModal();joinParty(${p.id})">Присоединиться</button>`}
+    </div>`).join('') + `<button class="btn ghost" style="width:100%;margin-top:12px"
+      onclick="closeModal();openCreateParty()">Создать своё пати</button>`;
+  } catch (e) { box.innerHTML = '<div class="hint">Не удалось загрузить список</div>'; }
+}
+
+function openCreateParty(onCreated) {
+  openModal(`<div class="modal-head"><h3>Собрать пати</h3>
+    <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-top:0">Пати — это групповой чат с игровой шапкой: видно игру, состав и готовность.</p>
+      <label class="lbl">Игра</label>
+      <select class="inp" id="cpGame">${gameOptionsHtml('')}</select>
+      <div class="form-grid" style="margin-top:12px">
+        <div><label class="lbl">Всего игроков</label><input class="inp" id="cpSize" type="number" min="2" max="10" value="5"></div>
+        <div><label class="lbl">Режим</label><select class="inp" id="cpMode">
+          <option value="comp">Соревновательный</option><option value="coop">Кооператив</option><option value="">Любой</option></select></div>
+      </div>
+      <button class="btn primary" style="width:100%;margin-top:14px" onclick="submitCreateParty()">Создать пати</button>
+    </div>`);
+  window.__partyCreated = onCreated || null;
+}
+async function submitCreateParty() {
+  const body = { game_id: $('#cpGame').value, size: parseInt($('#cpSize').value, 10) || 5, mode: $('#cpMode').value };
+  try {
+    const d = await api('/api/parties', { method: 'POST', body });
+    closeModal();
+    const cb = window.__partyCreated; window.__partyCreated = null;
+    if (cb) { await cb(body.game_id); return; }
+    toast('Пати собрано');
+    await loadChats();
+    await openConv('group', d.chat_id);
+  } catch (e) { toast(esc(e.message), 'err'); }
+}
+
+/* ---------- голос: честно говорим, что сервер звука ещё не включён ---------- */
+function startVoiceSoon() {
+  openModal(`<div class="modal-head"><h3>Голосовой чат</h3>
+    <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+    <div class="modal-body">
+      <p class="hint" style="margin-top:0">Голос пока не включён: для передачи звука нужен отдельный сервер (WebRTC и TURN).
+      Это следующий шаг после этого обновления — кнопка заговорит сама, ничего настраивать не придётся.</p>
+      <p class="hint">Что уже работает для сбора состава: карточка «Найти игроков», приглашение в игру, готовность состава
+      и «Начать игру» — состав собирается целиком в чате.</p>
+      <button class="btn ghost" style="width:100%;margin-top:8px" onclick="closeModal();openLfgForm()">Найти игроков сейчас</button>
+    </div>`);
+}
+
+/* ---------- история сессий ---------- */
+async function openSessions() {
+  openModal(`<div class="modal-head"><h3>Игровые сессии</h3>
+    <button class="x-btn" onclick="closeModal()">Закрыть</button></div>
+    <div class="modal-body" id="sessionsBox">Загрузка…</div>`);
+  const box = $('#sessionsBox');
+  try {
+    const d = await api('/api/sessions');
+    if (!d.items.length) {
+      box.innerHTML = `<div class="hint">Сессий пока не было. Собери пати, отметьте готовность и нажмите «Начать игру» —
+        сюда попадёт история: кто играл, сколько и во что.</div>`;
+      return;
+    }
+    box.innerHTML = d.items.map(s => `<div class="board-card">
+      <div class="bc-top"><b>${esc(s.game_name || 'Игра')}</b><span>${s.minutes} мин</span></div>
+      <div class="bc-rows">${[s.finished ? 'завершена' : 'идёт', (s.players || 0) + ' игроков'].map(x => `<span>${esc(x)}</span>`).join('')}</div>
+      <div class="bc-by">${esc((s.members || []).map(m => m.nick).join(', '))}</div>
+      <button class="btn sm primary" onclick="closeModal();playAgain(${s.id})">Играть снова</button>
+    </div>`).join('');
+  } catch (e) { box.innerHTML = '<div class="hint">Не удалось загрузить историю</div>'; }
+}
+async function playAgain(sessionId) {
+  try {
+    const d = await api('/api/sessions/' + sessionId + '/play-again', { method: 'POST' });
+    toast(d.already ? 'У тебя уже есть открытое пати' : 'Состав собран заново');
+    await loadChats();
+    await openConv('group', d.chat_id);
+  } catch (e) { toast(esc(e.message), 'err'); }
 }
 
 function startPolling() {

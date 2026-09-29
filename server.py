@@ -548,16 +548,419 @@ def find_chat(conn, a, b):
 
 
 def unread_count(conn, user_id):
-    """Непрочитанные во всех диалогах: и где я позвал, и где позвали меня."""
+    """Непрочитанные в личных диалогах (запросы на переписку в счётчик не идут)."""
     row = conn.execute(
         "SELECT COALESCE(SUM(CASE WHEN user_id = ? THEN unread ELSE unread_b END), 0) AS u "
-        "FROM chats WHERE user_id = ? OR peer_user_id = ?",
+        "FROM chats WHERE (user_id = ? OR peer_user_id = ?) AND COALESCE(requested, 0) = 0",
         (user_id, user_id, user_id)).fetchone()
     return row["u"] if row else 0
 
 
+# ---------- игровой статус: что делает игрок прямо сейчас ----------
+PRESENCE_LABELS = {
+    "offline": "офлайн",
+    "online": "онлайн",
+    "looking": "ищу тиммейтов",
+    "lobby": "в пати",
+    "playing": "играет",
+}
+
+
+def touch_presence(conn, uid):
+    """Отмечаем, что игрок только что был в сети (онлайн живёт 2 минуты)."""
+    if not uid:
+        return
+    stamp = now_iso()
+    conn.execute("UPDATE users SET online = 1, last_seen = ? WHERE id = ?", (stamp, uid))
+    conn.execute("UPDATE listings SET online = 1, last_seen = ? WHERE user_id = ?", (stamp, uid))
+
+
+def user_presence(conn, uid):
+    """Игровой статус игрока: офлайн / онлайн / ищу тиммейтов / в пати / играет."""
+    out = dict(state="offline", label=PRESENCE_LABELS["offline"], game_id=None, game_name=None,
+               game_short=None, mode=None, party_id=None, party_status=None, players=None, size=None,
+               looking=False, avatar="", nick="")
+    if not uid:
+        return out
+    u = conn.execute("SELECT nickname FROM users WHERE id = ?", (uid,)).fetchone()
+    out["nick"] = u["nickname"] if u else ""
+    row = conn.execute("SELECT online, last_seen, looking_at FROM listings WHERE user_id = ?",
+                       (uid,)).fetchone()
+    seen = None
+    if row and row["last_seen"]:
+        seen = row["last_seen"]
+    urow = conn.execute("SELECT last_seen FROM users WHERE id = ?", (uid,)).fetchone()
+    if urow and urow["last_seen"] and (not seen or urow["last_seen"] > seen):
+        seen = urow["last_seen"]
+    fresh = bool(seen and seen >= iso_cutoff(2))
+    out["state"] = "online" if fresh else "offline"
+    out["label"] = PRESENCE_LABELS[out["state"]]
+    if row and row["looking_at"] and row["looking_at"] >= iso_cutoff(LOOKING_WINDOW_MIN):
+        out["looking"] = True
+    # пати важнее: если игрок в составе — показываем игру и состав
+    p = conn.execute(
+        """SELECT p.* FROM parties p JOIN group_members m ON m.chat_id = p.chat_id
+           WHERE m.user_id = ? AND p.status IN ('open', 'playing') ORDER BY p.id DESC LIMIT 1""",
+        (uid,)).fetchone()
+    if p:
+        out["party_id"] = p["id"]
+        out["party_status"] = p["status"]
+        out["game_id"] = p["game_id"]
+        g = GAME_BY_ID.get(p["game_id"])
+        if g:
+            out["game_name"] = g["name"]
+            out["game_short"] = g["short"]
+        out["mode"] = MODE_LABELS.get(p["mode"], p["mode"])
+        cnt = conn.execute("SELECT COUNT(*) AS c FROM group_members WHERE chat_id = ?",
+                           (p["chat_id"],)).fetchone()["c"]
+        out["players"], out["size"] = cnt, p["size"]
+        if out["state"] == "online":
+            out["state"] = "playing" if p["status"] == "playing" else "lobby"
+            out["label"] = PRESENCE_LABELS[out["state"]]
+        return out
+    if out["state"] == "online" and out["looking"]:
+        out["state"], out["label"] = "looking", PRESENCE_LABELS["looking"]
+    # аватар: Steam, если привязан и разрешён
+    su = conn.execute("SELECT steam_id, steam_avatar, steam_public FROM users WHERE id = ?", (uid,)).fetchone()
+    if su and su["steam_id"] and (su["steam_public"] is None or su["steam_public"]):
+        out["avatar"] = su["steam_avatar"] or ""
+    return out
+
+
+def presence_line(p):
+    """Короткая строка статуса для списка чатов и карточек."""
+    if p["state"] == "playing" and p["game_name"]:
+        return f"Играет: {p['game_name']}"
+    if p["state"] == "lobby" and p["game_name"]:
+        return f"В пати: {p['game_name']} {p['players']}/{p['size']}"
+    if p["state"] == "looking":
+        return "Ищет тиммейтов"
+    if p["state"] == "online":
+        return "Онлайн"
+    return "Не в сети"
+
+
+def resolve_user_key(conn, key):
+    """По нику или id находим аккаунт — удобно и для ссылок, и для списков."""
+    key = (key or "").strip()[:64]
+    if not key:
+        return ""
+    row = conn.execute("SELECT id FROM users WHERE id = ?", (key,)).fetchone()
+    if row:
+        return row["id"]
+    row = conn.execute("SELECT id FROM users WHERE nickname = ? COLLATE NOCASE", (key,)).fetchone()
+    return row["id"] if row else ""
+
+
+def user_card(conn, uid):
+    """Компактная карточка игрока для чата: ник, аватар, статус, ссылка на анкету."""
+    p = user_presence(conn, uid)
+    row = conn.execute("SELECT id, nick FROM listings WHERE user_id = ? ORDER BY id LIMIT 1", (uid,)).fetchone()
+    p["listing_id"] = row["id"] if row else None
+    p["nick"] = p["nick"] or (row["nick"] if row else "Игрок")
+    return p
+
+
+def group_member_ids(conn, chat_id):
+    return [r["user_id"] for r in conn.execute(
+        "SELECT user_id FROM group_members WHERE chat_id = ?", (chat_id,)).fetchall()]
+
+
+def in_group(conn, chat_id, uid):
+    return bool(uid and conn.execute("SELECT 1 FROM group_members WHERE chat_id = ? AND user_id = ?",
+                                     (chat_id, uid)).fetchone())
+
+
+def group_unread(conn, chat_id, uid):
+    m = conn.execute("SELECT last_read_at FROM group_members WHERE chat_id = ? AND user_id = ?",
+                     (chat_id, uid)).fetchone()
+    since = (m["last_read_at"] if m else None) or ""
+    row = conn.execute(
+        "SELECT COUNT(*) AS c FROM group_messages WHERE chat_id = ? AND user_id != ? AND deleted = 0 "
+        "AND created_at > ?", (chat_id, uid, since)).fetchone()
+    return row["c"] if row else 0
+
+
+def unread_groups_total(conn, uid):
+    rows = conn.execute("SELECT chat_id FROM group_members WHERE user_id = ?", (uid,)).fetchall()
+    return sum(group_unread(conn, r["chat_id"], uid) for r in rows)
+
+
+def group_title(conn, g):
+    if g["title"]:
+        return g["title"]
+    gid = g["game_id"]
+    gg = GAME_BY_ID.get(gid) if gid else None
+    return (gg["name"] if gg else "Группа")
+
+
+def party_brief(conn, party_id, uid=None):
+    """Пати целиком: игра, состав со статусами и готовностью, лидер."""
+    p = conn.execute("SELECT * FROM parties WHERE id = ?", (party_id,)).fetchone()
+    if not p:
+        return None
+    g = GAME_BY_ID.get(p["game_id"]) if p["game_id"] else None
+    members = []
+    for m in conn.execute("SELECT * FROM group_members WHERE chat_id = ? ORDER BY joined_at", (p["chat_id"],)):
+        card = user_card(conn, m["user_id"])
+        card.update(dict(user_id=m["user_id"], ready=bool(m["ready"]), role=m["role"],
+                         is_leader=(m["user_id"] == p["leader_user_id"]),
+                         is_me=(m["user_id"] == uid)))
+        members.append(card)
+    return dict(
+        id=p["id"], chat_id=p["chat_id"], game_id=p["game_id"],
+        game_name=(g["name"] if g else ""), game_short=(g["short"] if g else ""),
+        mode=p["mode"], region=p["region"], rank=p["rank"], mic=bool(p["mic"]), lang=p["lang"],
+        size=p["size"], note=p["note"], status=p["status"], leader_user_id=p["leader_user_id"],
+        players=len(members), members=members,
+        is_member=bool(uid and any(m["user_id"] == uid for m in members)),
+        is_leader=bool(uid and uid == p["leader_user_id"]),
+        created_at=p["created_at"],
+    )
+
+
+def add_system_message(conn, chat_id, text, meta=None):
+    conn.execute(
+        "INSERT INTO group_messages (chat_id, user_id, text, kind, meta, created_at) VALUES (?,?,?,?,?,?)",
+        (chat_id, None, text, "system", json.dumps(meta or {}, ensure_ascii=False), now_iso()))
+
+
+def create_party(conn, uid, game_id, mode="", region="", rank="", mic=0, size=5, lang="", note=""):
+    """Пати = групповой чат + состав + игровой контекст в шапке."""
+    cur = conn.execute(
+        """INSERT INTO group_chats (kind, title, game_id, mode, region, rank, created_at, updated_at)
+           VALUES ('party', ?, ?, ?, ?, ?, ?, ?)""",
+        ("", game_id, mode, region, rank, now_iso(), now_iso()))
+    chat_id = cur.lastrowid
+    cur = conn.execute(
+        """INSERT INTO parties (chat_id, game_id, mode, region, rank, mic, lang, size, note,
+                                leader_user_id, status, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,'open',?,?)""",
+        (chat_id, game_id, mode, region, rank, int(bool(mic)), lang, size, note, uid, now_iso(), now_iso()))
+    party_id = cur.lastrowid
+    conn.execute("UPDATE group_chats SET party_id = ? WHERE id = ?", (party_id, chat_id))
+    conn.execute("INSERT INTO group_members (chat_id, user_id, joined_at, last_read_at, role) VALUES (?,?,?,?, 'leader')",
+                 (chat_id, uid, now_iso(), now_iso()))
+    gg = GAME_BY_ID.get(game_id)
+    title = (gg["name"] if gg else "Пати")
+    conn.execute("UPDATE group_chats SET title = ? WHERE id = ?", (f"Пати · {title}", chat_id))
+    add_system_message(conn, chat_id, f"Пати собрано: {title}"
+                        + (f" · {MODE_LABELS.get(mode, mode)}" if mode else "")
+                        + f" · нужно {size} игроков")
+    conn.commit()
+    return party_id, chat_id
+
+
+def pb_game_name(conn, party_row):
+    g = GAME_BY_ID.get(party_row["game_id"])
+    return g["name"] if g else "Игра"
+
+
+def close_session(conn, party_id):
+    """Закрываем сессию пати: считаем минуты, чтобы потом предложить «играть снова»."""
+    r = conn.execute("SELECT * FROM party_sessions WHERE party_id = ? AND ended_at IS NULL "
+                     "ORDER BY id DESC LIMIT 1", (party_id,)).fetchone()
+    if not r:
+        return None
+    try:
+        t0 = datetime.fromisoformat(r["started_at"])
+        minutes = max(1, int((datetime.now(timezone.utc) - t0).total_seconds() // 60))
+    except Exception:
+        minutes = 0
+    conn.execute("UPDATE party_sessions SET ended_at = ?, minutes = ? WHERE id = ?", (now_iso(), minutes, r["id"]))
+    return dict(id=r["id"], minutes=minutes, game_id=r["game_id"])
+
+
+def post_card(conn, chat_id, uid, kind, meta, text=""):
+    cur = conn.execute(
+        "INSERT INTO group_messages (chat_id, user_id, text, kind, meta, created_at) VALUES (?,?,?,?,?,?)",
+        (chat_id, uid, text, kind, json.dumps(meta, ensure_ascii=False), now_iso()))
+    return cur.lastrowid
+
+
+def toggle_reaction(conn, chat_kind, chat_id, message_id, uid, value):
+    value = (value or "").strip()[:16]
+    if value not in REACTIONS_ALLOWED:
+        return None
+    row = conn.execute("SELECT 1 FROM reactions WHERE chat_kind = ? AND chat_id = ? AND message_id = ? "
+                       "AND user_id = ? AND value = ?", (chat_kind, chat_id, message_id, uid, value)).fetchone()
+    if row:
+        conn.execute("DELETE FROM reactions WHERE chat_kind = ? AND chat_id = ? AND message_id = ? "
+                     "AND user_id = ? AND value = ?", (chat_kind, chat_id, message_id, uid, value))
+        return False
+    conn.execute("INSERT INTO reactions (chat_kind, chat_id, message_id, user_id, value, created_at) "
+                 "VALUES (?,?,?,?,?,?)", (chat_kind, chat_id, message_id, uid, value, now_iso()))
+    return True
+
+
+REACTIONS_ALLOWED = ["Го", "Жду", "Круто", "Смешно", "Мимо", "Плюс"]
+
+
+def poll_state(conn, chat_kind, chat_id, message_id, meta, uid):
+    """Опрос: варианты, голоса, мой выбор."""
+    options = meta.get("options") or []
+    rows = conn.execute("SELECT choice, user_id FROM poll_votes WHERE chat_kind = ? AND chat_id = ? "
+                        "AND message_id = ?", (chat_kind, chat_id, message_id)).fetchall()
+    votes = [0] * len(options)
+    mine = None
+    voters = [[] for _ in options]
+    for r in rows:
+        if 0 <= r["choice"] < len(options):
+            votes[r["choice"]] += 1
+            voters[r["choice"]].append(user_display(conn, r["user_id"]))
+        if r["user_id"] == uid:
+            mine = r["choice"]
+    return dict(question=meta.get("question") or "Опрос", options=options, votes=votes,
+                voters=voters, my_choice=mine, total=len(rows))
+
+
+def group_item(conn, r, uid, quotes=None, reacts=None, chat_kind="group", chat_id=None):
+    """Сообщение группового чата в том же виде, что и личные: sender — 'me' или ник."""
+    meta = {}
+    if r["meta"]:
+        try:
+            meta = json.loads(r["meta"])
+        except Exception:
+            meta = {}
+    sender = "me" if r["user_id"] == uid else "peer"
+    card = user_card(conn, r["user_id"]) if r["user_id"] else None
+    quote = None
+    if r["reply_to"] and quotes is not None:
+        q = quotes.get(r["reply_to"])
+        if q is not None:
+            q_card = user_card(conn, q["user_id"]) if q["user_id"] else None
+            quote = dict(id=q["id"], nick=(q_card["nick"] if q_card else "Система"),
+                         text=("Сообщение удалено" if q["deleted"] else (q["text"] or ""))[:160])
+    item = dict(
+        id=r["id"], sender=sender, text="" if r["deleted"] else (r["text"] or ""),
+        created_at=r["created_at"], deleted=bool(r["deleted"]), edited=bool(r["edited_at"]),
+        kind=r["kind"] or "text", meta=meta, reply_to=quote, pinned=bool(r["pinned"]),
+        nick=(card["nick"] if card else "Система"), avatar=(card["avatar"] if card else ""),
+        user_id=(r["user_id"] or ""), presence=(card["state"] if card else None),
+        reactions=(reacts or {}).get(r["id"], []),
+    )
+    if item["kind"] == "poll" and not item["deleted"]:
+        item["poll"] = poll_state(conn, chat_kind, chat_id or r["chat_id"], r["id"], meta, uid)
+    if item["kind"] == "lfg" and meta.get("party_id"):
+        pb = party_brief(conn, meta["party_id"], uid)
+        if pb:
+            item["party"] = dict(id=pb["id"], players=pb["players"], size=pb["size"], status=pb["status"],
+                                 is_member=pb["is_member"])
+    return item
+
+
+def dm_unread_total(conn, uid):
+    return unread_count(conn, uid)
+
+
 def migrate(conn):
     """Догоняем схему для баз, созданных предыдущими версиями."""
+    # --- игровой слой чата: пати, групповые чаты, реакции (1.9) ---
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS parties (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_id INTEGER,
+        game_id TEXT,
+        mode TEXT,
+        region TEXT,
+        rank TEXT,
+        mic INTEGER DEFAULT 0,
+        lang TEXT,
+        size INTEGER DEFAULT 5,
+        note TEXT,
+        leader_user_id TEXT,
+        status TEXT DEFAULT 'open',
+        created_at TEXT,
+        updated_at TEXT,
+        closed_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS group_chats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind TEXT DEFAULT 'group',
+        title TEXT,
+        game_id TEXT,
+        mode TEXT,
+        region TEXT,
+        rank TEXT,
+        party_id INTEGER,
+        created_at TEXT,
+        updated_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS group_members (
+        chat_id INTEGER,
+        user_id TEXT,
+        joined_at TEXT,
+        last_read_at TEXT,
+        ready INTEGER DEFAULT 0,
+        role TEXT DEFAULT 'member',
+        muted_until TEXT,
+        UNIQUE(chat_id, user_id)
+    );
+    CREATE TABLE IF NOT EXISTS group_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_id INTEGER,
+        user_id TEXT,
+        text TEXT,
+        kind TEXT DEFAULT 'text',
+        meta TEXT,
+        reply_to INTEGER,
+        edited_at TEXT,
+        deleted INTEGER DEFAULT 0,
+        deleted_at TEXT,
+        pinned INTEGER DEFAULT 0,
+        created_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS reactions (
+        chat_kind TEXT,
+        chat_id INTEGER,
+        message_id INTEGER,
+        user_id TEXT,
+        value TEXT,
+        created_at TEXT,
+        UNIQUE(chat_kind, chat_id, message_id, user_id, value)
+    );
+    CREATE TABLE IF NOT EXISTS poll_votes (
+        chat_kind TEXT,
+        chat_id INTEGER,
+        message_id INTEGER,
+        user_id TEXT,
+        choice INTEGER,
+        created_at TEXT,
+        UNIQUE(chat_kind, chat_id, message_id, user_id)
+    );
+    CREATE TABLE IF NOT EXISTS party_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        party_id INTEGER,
+        chat_id INTEGER,
+        game_id TEXT,
+        leader_user_id TEXT,
+        members TEXT,
+        started_at TEXT,
+        ended_at TEXT,
+        minutes INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_gm_chat ON group_messages(chat_id, id);
+    CREATE INDEX IF NOT EXISTS idx_gmembers_user ON group_members(user_id);
+    """)
+    # отметка присутствия у самого пользователя (анкеты может и не быть)
+    for col, ddl in (("online", "ALTER TABLE users ADD COLUMN online INTEGER DEFAULT 0"),
+                     ("last_seen", "ALTER TABLE users ADD COLUMN last_seen TEXT")):
+        if col not in {r[1] for r in conn.execute("PRAGMA table_info(users)")}:
+            conn.execute(ddl)
+    # личные сообщения: тип и данные карточек (приглашение, поиск игроков), закрепление
+    for col, ddl in (("kind", "ALTER TABLE messages ADD COLUMN kind TEXT DEFAULT 'text'"),
+                     ("meta", "ALTER TABLE messages ADD COLUMN meta TEXT"),
+                     ("pinned", "ALTER TABLE messages ADD COLUMN pinned INTEGER DEFAULT 0")):
+        if col not in {r[1] for r in conn.execute("PRAGMA table_info(messages)")}:
+            conn.execute(ddl)
+    if "typing_at" not in {r[1] for r in conn.execute("PRAGMA table_info(group_members)")}:
+        conn.execute("ALTER TABLE group_members ADD COLUMN typing_at TEXT")
+    # диалоги: запросы на переписку от незнакомцев и «без звука»
+    for col, ddl in (("requested", "ALTER TABLE chats ADD COLUMN requested INTEGER DEFAULT 0"),
+                     ("muted_until", "ALTER TABLE chats ADD COLUMN muted_until TEXT"),
+                     ("requester_id", "ALTER TABLE chats ADD COLUMN requester_id TEXT")):
+        if col not in {r[1] for r in conn.execute("PRAGMA table_info(chats)")}:
+            conn.execute(ddl)
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(listings)").fetchall()}
     if "contact" not in cols:
         conn.execute("ALTER TABLE listings ADD COLUMN contact TEXT DEFAULT ''")
@@ -1179,7 +1582,15 @@ class Handler(BaseHTTPRequestHandler):
         token = self.headers.get("X-Token")
         if not token:
             return None
-        return conn.execute("SELECT * FROM users WHERE token = ?", (token,)).fetchone()
+        row = conn.execute("SELECT * FROM users WHERE token = ?", (token,)).fetchone()
+        if row:
+            # каждый запрос — знак, что игрок в сети (в базу пишем не чаще раза в 30 секунд)
+            fresh = conn.execute("SELECT last_seen FROM users WHERE id = ? AND last_seen >= ?",
+                                 (row["id"], iso_cutoff(0.5))).fetchone()
+            if not fresh:
+                touch_presence(conn, row["id"])
+                conn.commit()
+        return row
 
     def _redirect(self, location):
         return self._send(302, b"", "text/plain; charset=utf-8", cache="no-store",
@@ -1289,7 +1700,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, dict(discord_enabled=DISCORD_ENABLED,
                                         steam_enabled=True,
                                         push_enabled=PUSH_ENABLED,
-                                        app_name="SQUADUP", version="1.8"))
+                                        app_name="SQUADUP", version="1.9"))
 
         if path == "/api/games" and method == "GET":
             return self._send(200, dict(
@@ -1936,7 +2347,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(401, {"error": "Нужен вход"})
             listing_row = conn.execute("SELECT * FROM listings WHERE user_id = ? ORDER BY id DESC LIMIT 1",
                                        (uid,)).fetchone()
-            unread = unread_count(conn, uid)
+            unread = unread_count(conn, uid) + unread_groups_total(conn, uid)
             apps = conn.execute("""SELECT a.*, s.name AS squad_name, s.tag AS squad_tag FROM applications a
                                    LEFT JOIN squads s ON s.id = a.squad_id
                                    WHERE a.user_id = ? ORDER BY a.id DESC""", (uid,)).fetchall()
@@ -2159,9 +2570,10 @@ class Handler(BaseHTTPRequestHandler):
                                     (uid, listing_id)).fetchone()
             if not chat:
                 cur = conn.execute(
-                    """INSERT INTO chats (user_id, listing_id, peer_nick, peer_user_id, unread, unread_b, created_at, updated_at)
-                       VALUES (?,?,?,?,0,0,?,?)""",
-                    (uid, listing_id, listing["nick"], peer_uid, now_iso(), now_iso()))
+                    """INSERT INTO chats (user_id, listing_id, peer_nick, peer_user_id, unread, unread_b,
+                                            requested, requester_id, created_at, updated_at)
+                       VALUES (?,?,?,?,0,0,?,?,?,?)""",
+                    (uid, listing_id, listing["nick"], peer_uid, 1, uid, now_iso(), now_iso()))
                 chat_id = cur.lastrowid
                 initiator_is_me = True
             else:
@@ -2270,6 +2682,18 @@ class Handler(BaseHTTPRequestHandler):
                     marks = ",".join("?" * len(ids))
                     for q in conn.execute(f"SELECT id, sender, text, deleted FROM messages WHERE id IN ({marks})", ids):
                         quotes[q["id"]] = q
+                # реакции на сообщения (текстовые, без эмодзи)
+                reacts = {}
+                all_ids = [r["id"] for r in list(rows) + list(changed_rows)]
+                if all_ids:
+                    marks = ",".join("?" * len(all_ids))
+                    for rr in conn.execute(
+                            f"SELECT message_id, value, COUNT(*) AS c, "
+                            f"MAX(CASE WHEN user_id = ? THEN 1 ELSE 0 END) AS me FROM reactions "
+                            f"WHERE chat_kind = 'dm' AND chat_id = ? AND message_id IN ({marks}) "
+                            f"GROUP BY message_id, value ORDER BY MIN(created_at)", [uid, chat_id] + all_ids):
+                        reacts.setdefault(rr["message_id"], []).append(
+                            dict(value=rr["value"], count=rr["c"], mine=bool(rr["me"])))
                 peer_read_at = (chat["read_b"] if is_initiator else chat["read_a"]) if "read_b" in chat.keys() else None
                 my_read_at = (chat["read_a"] if is_initiator else chat["read_b"]) if "read_a" in chat.keys() else None
                 peer_typing_at = (chat["typing_b"] if is_initiator else chat["typing_a"]) if "typing_b" in chat.keys() else None
@@ -2283,15 +2707,31 @@ class Handler(BaseHTTPRequestHandler):
                         who = (user["nickname"] if q_sender == "me" else peer_nick) or "Игрок"
                         quote = dict(id=q["id"], nick=who,
                                      text=("Сообщение удалено" if q["deleted"] else (q["text"] or ""))[:160])
-                    return dict(
+                    meta = {}
+                    if "meta" in r.keys() and r["meta"]:
+                        try:
+                            meta = json.loads(r["meta"])
+                        except Exception:
+                            meta = {}
+                    kind = (r["kind"] if "kind" in r.keys() and r["kind"] else "text")
+                    item = dict(
+                        kind=kind, meta=meta,
+                        pinned=bool(r["pinned"]) if "pinned" in r.keys() else False,
                         id=r["id"], sender=sender,
                         text="" if r["deleted"] else r["text"],
                         created_at=r["created_at"],
                         deleted=bool(r["deleted"]),
                         edited_at=(r["edited_at"] if "edited_at" in r.keys() else None),
+                        edited=bool("edited_at" in r.keys() and r["edited_at"]),
                         read=bool(sender == "me" and peer_read_at and peer_read_at >= r["created_at"]),
                         reply_to=quote,
+                        reactions=reacts.get(r["id"], []),
                     )
+                    if item["kind"] == "invite":
+                        item["invite"] = dict(meta)
+                    if item["kind"] == "lfg":
+                        item["lfg"] = dict(meta)
+                    return item
 
                 items = [to_item(r) for r in rows]
                 changed = [to_item(r) for r in changed_rows if r["id"] not in {i["id"] for i in items}]
@@ -2514,6 +2954,769 @@ class Handler(BaseHTTPRequestHandler):
                     body=(body.get("message") or "Игрок хочет присоединиться")[:140],
                     url="/?view=squads", tag=f"squad-{squad_id}"))
             return self._send(200, dict(ok=True))
+
+        # ==================== игровой слой чата (1.9) ====================
+        if path == "/api/presence" and method == "GET":
+            keys = [x for x in ((query.get("ids") or [""])[0].split(",")) if x][:50]
+            out = {}
+            for k in keys:
+                uid_k = resolve_user_key(conn, k)
+                out[k] = user_card(conn, uid_k) if uid_k else dict(
+                    state="offline", label=PRESENCE_LABELS["offline"], nick=k, avatar="", game_name=None,
+                    game_short=None, party_id=None, players=None, size=None, mode=None, looking=False,
+                    listing_id=None, game_id=None)
+            return self._send(200, dict(items=out))
+
+        if path == "/api/inbox" and method == "GET":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            touch_presence(conn, uid)
+            conn.commit()
+            blocked = blocked_ids(conn, uid)
+            items = []
+            # --- личные диалоги ---
+            for c in conn.execute("SELECT * FROM chats WHERE user_id = ? OR peer_user_id = ? "
+                                  "ORDER BY updated_at DESC", (uid, uid)).fetchall():
+                peer_uid, peer_nick, is_initiator, my_unread = chat_partner(conn, c, uid)
+                if peer_uid and peer_uid in blocked:
+                    continue
+                p = user_card(conn, peer_uid) if peer_uid else dict(state="offline", label="не в сети",
+                                                                    avatar="", nick=peer_nick,
+                                                                    game_name=None, party_id=None)
+                last = conn.execute("SELECT * FROM messages WHERE chat_id = ? ORDER BY id DESC LIMIT 1",
+                                    (c["id"],)).fetchone()
+                last_text = ""
+                if last:
+                    last_text = "Сообщение удалено" if last["deleted"] else (last["text"] or "")
+                typing_at = (c["typing_b"] if is_initiator else c["typing_a"]) if "typing_a" in c.keys() else None
+                items.append(dict(
+                    type="dm", id=c["id"], title=p["nick"] or peer_nick, avatar=p.get("avatar") or "",
+                    presence=p.get("state"), presence_label=presence_line(p),
+                    game_short=p.get("game_short") or "", game_id=p.get("game_id"),
+                    unread=my_unread, muted=bool(c["muted_until"] and c["muted_until"] > now_iso()),
+                    requested=bool(c["requested"]), requester_nick=(peer_nick if c["requested"] else ""),
+                    typing=bool(typing_at and typing_at >= iso_cutoff(8 / 60)),
+                    last_message=last_text, last_sender=(last["sender"] if last else None),
+                    updated_at=c["updated_at"], members=0,
+                ))
+            # --- группы и пати ---
+            for g in conn.execute(
+                    """SELECT g.* FROM group_chats g JOIN group_members m ON m.chat_id = g.id
+                       WHERE m.user_id = ? ORDER BY g.updated_at DESC""", (uid,)).fetchall():
+                last = conn.execute("SELECT * FROM group_messages WHERE chat_id = ? AND deleted = 0 "
+                                    "ORDER BY id DESC LIMIT 1", (g["id"],)).fetchone()
+                last_text = ""
+                if last:
+                    last_text = (last["text"] or "") or ("Опрос" if last["kind"] == "poll" else
+                                                         "Приглашение" if last["kind"] == "invite" else
+                                                         "Поиск игроков" if last["kind"] == "lfg" else "")
+                members = conn.execute("SELECT COUNT(*) AS c FROM group_members WHERE chat_id = ?",
+                                       (g["id"],)).fetchone()["c"]
+                muted = conn.execute("SELECT muted_until FROM group_members WHERE chat_id = ? AND user_id = ?",
+                                     (g["id"], uid)).fetchone()
+                typing_rows = conn.execute(
+                    "SELECT user_id, ready FROM group_members WHERE chat_id = ? AND user_id != ?", (g["id"], uid)).fetchall()
+                gg = GAME_BY_ID.get(g["game_id"]) if g["game_id"] else None
+                items.append(dict(
+                    type=("party" if g["kind"] == "party" else "group"), id=g["id"], title=group_title(conn, g),
+                    avatar="", presence=None, presence_label=f"{members} участников",
+                    game_short=(gg["short"] if gg else ""), game_id=g["game_id"],
+                    unread=group_unread(conn, g["id"], uid),
+                    muted=bool(muted and muted["muted_until"] and muted["muted_until"] > now_iso()),
+                    requested=False, requester_nick="", typing=False,
+                    last_message=last_text, last_sender=None,
+                    updated_at=g["updated_at"], members=members, party_id=g["party_id"],
+                ))
+            items.sort(key=lambda x: x["updated_at"] or "", reverse=True)
+            return self._send(200, dict(items=items, unread=dm_unread_total(conn, uid) + unread_groups_total(conn, uid)))
+
+        # --- пати ---
+        if path == "/api/parties" and method == "GET":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            game = (query.get("game") or [""])[0]
+            rows = conn.execute("SELECT * FROM parties WHERE status = 'open' ORDER BY id DESC LIMIT 50").fetchall()
+            out = []
+            for p in rows:
+                pb = party_brief(conn, p["id"], uid)
+                if not pb or (game and pb["game_id"] != game):
+                    continue
+                if conn.execute("SELECT 1 FROM blocks WHERE (user_id = ? AND blocked_user_id = ?) "
+                                "OR (user_id = ? AND blocked_user_id = ?)",
+                                (uid, p["leader_user_id"], p["leader_user_id"], uid)).fetchone():
+                    continue
+                out.append(pb)
+            return self._send(200, dict(items=out))
+
+        if path == "/api/parties" and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            body = self._json_body()
+            game_id = (body.get("game_id") or "")[:40]
+            if game_id not in GAME_BY_ID:
+                return self._send(400, {"error": "Выбери игру из каталога"})
+            size = max(2, min(10, int(body.get("size") or 5)))
+            mode = (body.get("mode") or "")[:20]
+            open_now = conn.execute(
+                "SELECT p.* FROM parties p JOIN group_members m ON m.chat_id = p.chat_id "
+                "WHERE m.user_id = ? AND p.status IN ('open','playing')", (uid,)).fetchone()
+            if open_now:
+                pb = party_brief(conn, open_now["id"], uid)
+                return self._send(200, dict(ok=True, already=True, party=pb))
+            party_id, chat_id = create_party(conn, uid, game_id, mode=mode, region=(body.get("region") or "")[:20],
+                                            rank=(body.get("rank") or "")[:20], mic=body.get("mic"),
+                                            size=size, lang=(body.get("lang") or "")[:20],
+                                            note=(body.get("note") or "")[:200])
+            return self._send(200, dict(ok=True, party_id=party_id, chat_id=chat_id,
+                                        party=party_brief(conn, party_id, uid)))
+
+        m = re.match(r"^/api/parties/(\d+)$", path)
+        if m and method == "GET":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            pb = party_brief(conn, int(m.group(1)), uid)
+            if not pb:
+                return self._send(404, {"error": "Пати не найдено"})
+            return self._send(200, dict(party=pb))
+
+        m = re.match(r"^/api/parties/(\d+)/(join|leave|ready|kick|transfer|start|close|invite)$", path)
+        if m and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            party_id, action = int(m.group(1)), m.group(2)
+            p = conn.execute("SELECT * FROM parties WHERE id = ?", (party_id,)).fetchone()
+            if not p:
+                return self._send(404, {"error": "Пати не найдено"})
+            body = self._json_body()
+            chat_id = p["chat_id"]
+            is_member = in_group(conn, chat_id, uid)
+
+            if action == "join":
+                if is_member:
+                    return self._send(200, dict(ok=True, already=True, chat_id=chat_id, party=party_brief(conn, party_id, uid)))
+                if p["status"] != "open":
+                    return self._send(400, {"error": "Пати уже играет или закрыто"})
+                cnt = conn.execute("SELECT COUNT(*) AS c FROM group_members WHERE chat_id = ?",
+                                   (chat_id,)).fetchone()["c"]
+                if cnt >= p["size"]:
+                    return self._send(400, {"error": "В пати уже нет мест"})
+                if is_blocked_between(conn, uid, p["leader_user_id"]):
+                    return self._send(403, {"error": "Недоступно"})
+                conn.execute("INSERT INTO group_members (chat_id, user_id, joined_at, last_read_at) VALUES (?,?,?,?)",
+                             (chat_id, uid, now_iso(), now_iso()))
+                add_system_message(conn, chat_id, f"{user['nickname']} вступил в пати")
+                conn.execute("UPDATE group_chats SET updated_at = ? WHERE id = ?", (now_iso(), chat_id))
+                conn.execute("UPDATE parties SET updated_at = ? WHERE id = ?", (now_iso(), party_id))
+                conn.commit()
+                for mid in group_member_ids(conn, chat_id):
+                    if mid != uid:
+                        push_async(mid, dict(title=f"В пати прибыл игрок · {pb_game_name(conn, p)}",
+                                             body=f"{user['nickname']} присоединился", url="/?view=chats",
+                                             tag=f"party-{party_id}"))
+                return self._send(200, dict(ok=True, chat_id=chat_id, party=party_brief(conn, party_id, uid)))
+
+            if not is_member and action != "close":
+                return self._send(403, {"error": "Ты не в этом пати"})
+
+            if action == "leave":
+                conn.execute("DELETE FROM group_members WHERE chat_id = ? AND user_id = ?", (chat_id, uid))
+                add_system_message(conn, chat_id, f"{user['nickname']} покинул пати")
+                left = conn.execute("SELECT COUNT(*) AS c FROM group_members WHERE chat_id = ?",
+                                    (chat_id,)).fetchone()["c"]
+                if left and p["leader_user_id"] == uid:
+                    new_leader = conn.execute("SELECT user_id FROM group_members WHERE chat_id = ? ORDER BY joined_at",
+                                              (chat_id,)).fetchone()["user_id"]
+                    conn.execute("UPDATE parties SET leader_user_id = ? WHERE id = ?", (new_leader, party_id))
+                    conn.execute("UPDATE group_members SET role = 'member' WHERE chat_id = ?", (chat_id,))
+                    conn.execute("UPDATE group_members SET role = 'leader' WHERE chat_id = ? AND user_id = ?",
+                                 (chat_id, new_leader))
+                    add_system_message(conn, chat_id, f"Лидер пати — {user_display(conn, new_leader)}")
+                if not left:
+                    conn.execute("UPDATE parties SET status = 'closed', closed_at = ? WHERE id = ?",
+                                 (now_iso(), party_id))
+                    close_session(conn, party_id)
+                conn.commit()
+                return self._send(200, dict(ok=True))
+
+            if action == "ready":
+                ready = 1 if body.get("ready", True) else 0
+                conn.execute("UPDATE group_members SET ready = ? WHERE chat_id = ? AND user_id = ?",
+                             (ready, chat_id, uid))
+                conn.execute("UPDATE group_chats SET updated_at = ? WHERE id = ?", (now_iso(), chat_id))
+                conn.commit()
+                return self._send(200, dict(ok=True, party=party_brief(conn, party_id, uid)))
+
+            if action in ("kick", "transfer", "invite"):
+                if p["leader_user_id"] != uid:
+                    return self._send(403, {"error": "Это может только лидер пати"})
+                target = (body.get("user_id") or "").strip()
+                if not target and body.get("nick"):
+                    r = conn.execute("SELECT id FROM users WHERE nickname = ? COLLATE NOCASE",
+                                     (str(body["nick"]).strip(),)).fetchone()
+                    target = r["id"] if r else ""
+                if not target:
+                    return self._send(400, {"error": "Игрок не найден"})
+                target_nick = user_display(conn, target)
+                if action == "kick":
+                    conn.execute("DELETE FROM group_members WHERE chat_id = ? AND user_id = ?", (chat_id, target))
+                    add_system_message(conn, chat_id, f"{target_nick} исключён из пати")
+                elif action == "transfer":
+                    conn.execute("UPDATE parties SET leader_user_id = ? WHERE id = ?", (target, party_id))
+                    conn.execute("UPDATE group_members SET role = 'member' WHERE chat_id = ?", (chat_id,))
+                    conn.execute("UPDATE group_members SET role = 'leader' WHERE chat_id = ? AND user_id = ?",
+                                 (chat_id, target))
+                    add_system_message(conn, chat_id, f"Лидер пати — {target_nick}")
+                else:
+                    already = in_group(conn, chat_id, target)
+                    cnt = conn.execute("SELECT COUNT(*) AS c FROM group_members WHERE chat_id = ?",
+                                       (chat_id,)).fetchone()["c"]
+                    if already:
+                        return self._send(200, dict(ok=True, already=True))
+                    if cnt >= p["size"]:
+                        return self._send(400, {"error": "В пати нет свободных мест"})
+                    if is_blocked_between(conn, uid, target):
+                        return self._send(403, {"error": "Недоступно"})
+                    conn.execute("INSERT INTO group_members (chat_id, user_id, joined_at, last_read_at) VALUES (?,?,?,?)",
+                                 (chat_id, target, now_iso(), now_iso()))
+                    add_system_message(conn, chat_id, f"{user['nickname']} позвал {target_nick}")
+                    push_async(target, dict(title="Тебя позвали в пати",
+                                            body=f"{user['nickname']}: {pb_game_name(conn, p)}",
+                                            url="/?view=chats", tag=f"party-{party_id}"))
+                conn.execute("UPDATE group_chats SET updated_at = ? WHERE id = ?", (now_iso(), chat_id))
+                conn.commit()
+                return self._send(200, dict(ok=True, party=party_brief(conn, party_id, uid)))
+
+            if action == "start":
+                if p["leader_user_id"] != uid and not in_group(conn, chat_id, uid):
+                    return self._send(403, {"error": "Ты не в этом пати"})
+                not_ready = [user_display(conn, r["user_id"]) for r in conn.execute(
+                    "SELECT user_id FROM group_members WHERE chat_id = ? AND ready = 0 AND user_id != ?",
+                    (chat_id, uid)).fetchall()]
+                if not_ready and not body.get("force"):
+                    return self._send(400, {"error": "Ждём готовности: " + ", ".join(not_ready), "waiting": not_ready})
+                conn.execute("UPDATE parties SET status = 'playing', updated_at = ? WHERE id = ?", (now_iso(), party_id))
+                members = [dict(user_id=r["user_id"], nick=user_display(conn, r["user_id"]))
+                           for r in conn.execute("SELECT user_id FROM group_members WHERE chat_id = ?", (chat_id,))]
+                conn.execute("INSERT INTO party_sessions (party_id, chat_id, game_id, leader_user_id, members, "
+                             "started_at) VALUES (?,?,?,?,?,?)",
+                             (party_id, chat_id, p["game_id"], p["leader_user_id"],
+                              json.dumps(members, ensure_ascii=False), now_iso()))
+                add_system_message(conn, chat_id, "Игра началась: " + pb_game_name(conn, p))
+                conn.execute("UPDATE group_chats SET updated_at = ? WHERE id = ?", (now_iso(), chat_id))
+                conn.commit()
+                for mid in group_member_ids(conn, chat_id):
+                    if mid != uid:
+                        push_async(mid, dict(title="Игра началась", body=pb_game_name(conn, p),
+                                             url="/?view=chats", tag=f"party-{party_id}"))
+                return self._send(200, dict(ok=True, party=party_brief(conn, party_id, uid)))
+
+            if action == "close":
+                conn.execute("UPDATE parties SET status = 'closed', closed_at = ? WHERE id = ?", (now_iso(), party_id))
+                sess = close_session(conn, party_id)
+                add_system_message(conn, chat_id, "Игровая сессия завершена"
+                                    + (f" · {sess['minutes']} мин" if sess else ""))
+                conn.commit()
+                for mid in group_member_ids(conn, chat_id):
+                    if mid != uid:
+                        push_async(mid, dict(title="Сессия завершена",
+                                             body=f"{pb_game_name(conn, p)} · можно позвать состав снова",
+                                             url="/?view=chats", tag=f"party-{party_id}"))
+                return self._send(200, dict(ok=True, session=sess))
+
+        # --- групповые чаты и пати-чаты ---
+        m = re.match(r"^/api/groups/(\d+)$", path)
+        if m and method == "GET":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            chat_id = int(m.group(1))
+            g = conn.execute("SELECT * FROM group_chats WHERE id = ?", (chat_id,)).fetchone()
+            if not g or not in_group(conn, chat_id, uid):
+                return self._send(404, {"error": "Чат не найден"})
+            members = [user_card(conn, x) for x in group_member_ids(conn, chat_id)]
+            return self._send(200, dict(chat=dict(id=chat_id, kind=g["kind"], title=group_title(conn, g),
+                                                  game_id=g["game_id"], mode=g["mode"], region=g["region"],
+                                                  rank=g["rank"], party_id=g["party_id"],
+                                                  members=members),
+                                        party=(party_brief(conn, g["party_id"], uid) if g["party_id"] else None)))
+
+        m = re.match(r"^/api/groups/(\d+)/messages$", path)
+        if m:
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            chat_id = int(m.group(1))
+            g = conn.execute("SELECT * FROM group_chats WHERE id = ?", (chat_id,)).fetchone()
+            if not g or not in_group(conn, chat_id, uid):
+                return self._send(404, {"error": "Чат не найден"})
+            if method == "GET":
+                after = qint(query, "after", 0, lo=0)
+                full = (query.get("all") or [""])[0] in ("1", "true")
+                if full:
+                    after = 0
+                since = (query.get("since") or [""])[0] or now_iso(-10)
+                if after <= 0:
+                    rows = conn.execute("SELECT * FROM group_messages WHERE chat_id = ? ORDER BY id LIMIT 500",
+                                        (chat_id,)).fetchall()
+                else:
+                    rows = conn.execute("SELECT * FROM group_messages WHERE chat_id = ? AND id > ? ORDER BY id",
+                                        (chat_id, after)).fetchall()
+                changed_rows = []
+                if after > 0:
+                    changed_rows = conn.execute(
+                        """SELECT * FROM group_messages WHERE chat_id = ? AND id <= ?
+                           AND ((edited_at IS NOT NULL AND edited_at >= ?)
+                                OR (deleted_at IS NOT NULL AND deleted_at >= ?)
+                                OR (pinned = 1 AND created_at >= ?)) ORDER BY id LIMIT 100""",
+                        (chat_id, after, since, since, since)).fetchall()
+                ids = [r["id"] for r in list(rows) + list(changed_rows)]
+                quotes = {}
+                reply_ids = [r["reply_to"] for r in list(rows) + list(changed_rows) if r["reply_to"]]
+                if reply_ids:
+                    marks = ",".join("?" * len(reply_ids))
+                    for q in conn.execute(f"SELECT * FROM group_messages WHERE id IN ({marks})", reply_ids):
+                        quotes[q["id"]] = q
+                reacts = {}
+                if ids:
+                    marks = ",".join("?" * len(ids))
+                    for r in conn.execute(
+                            f"SELECT message_id, value, COUNT(*) AS c, "
+                            f"MAX(CASE WHEN user_id = ? THEN 1 ELSE 0 END) AS me FROM reactions "
+                            f"WHERE chat_kind = 'group' AND chat_id = ? AND message_id IN ({marks}) "
+                            f"GROUP BY message_id, value ORDER BY MIN(created_at)", [uid, chat_id] + ids):
+                        reacts.setdefault(r["message_id"], []).append(
+                            dict(value=r["value"], count=r["c"], mine=bool(r["me"])))
+                members = [user_card(conn, x) for x in group_member_ids(conn, chat_id) if x != uid]
+                mrow = conn.execute("SELECT * FROM group_members WHERE chat_id = ? AND user_id = ?",
+                                    (chat_id, uid)).fetchone()
+                peer_read = conn.execute(
+                    "SELECT MAX(last_read_at) AS m FROM group_members WHERE chat_id = ? AND user_id != ?",
+                    (chat_id, uid)).fetchone()
+                typing_rows = conn.execute(
+                    "SELECT user_id, typing_at FROM group_members WHERE chat_id = ? AND user_id != ?",
+                    (chat_id, uid)).fetchall()
+                typing_names = [user_display(conn, r["user_id"]) for r in typing_rows
+                                if r["typing_at"] and r["typing_at"] >= iso_cutoff(8 / 60)]
+                return self._send(200, dict(
+                    items=[group_item(conn, r, uid, quotes, reacts, "group", chat_id) for r in rows],
+                    changed=[group_item(conn, r, uid, quotes, reacts, "group", chat_id) for r in changed_rows],
+                    members=members,
+                    peer_read_at=(peer_read["m"] if peer_read else None),
+                    typing_names=typing_names,
+                    party=(party_brief(conn, g["party_id"], uid) if g["party_id"] else None),
+                ))
+            if method == "POST":
+                body = self._json_body()
+                text = (body.get("text") or "").strip()[:4000]
+                kind = (body.get("kind") or "text")[:12]
+                meta = body.get("meta") or {}
+                if kind not in ("text", "lfg", "invite", "poll", "media"):
+                    return self._send(400, {"error": "Неизвестный тип сообщения"})
+                if not text and kind == "text":
+                    return self._send(400, {"error": "Пустое сообщение"})
+                reply_to = body.get("reply_to")
+                reply_to = int(reply_to) if str(reply_to or "").isdigit() else None
+                edited = None
+                mid = body.get("edit_id")
+                if mid:
+                    row = conn.execute("SELECT * FROM group_messages WHERE id = ? AND chat_id = ?",
+                                       (int(mid), chat_id)).fetchone()
+                    if not row:
+                        return self._send(404, {"error": "Сообщение не найдено"})
+                    if row["user_id"] != uid:
+                        return self._send(403, {"error": "Можно править только свои сообщения"})
+                    conn.execute("UPDATE group_messages SET text = ?, edited_at = ? WHERE id = ?",
+                                 (text, now_iso(), int(mid)))
+                    conn.commit()
+                    return self._send(200, dict(ok=True, id=int(mid)))
+                cur = conn.execute(
+                    "INSERT INTO group_messages (chat_id, user_id, text, kind, meta, reply_to, created_at) "
+                    "VALUES (?,?,?,?,?,?,?)",
+                    (chat_id, uid, text, kind, json.dumps(meta, ensure_ascii=False), reply_to, now_iso()))
+                mid = cur.lastrowid
+                conn.execute("UPDATE group_chats SET updated_at = ? WHERE id = ?", (now_iso(), chat_id))
+                conn.execute("UPDATE group_members SET last_read_at = ? WHERE chat_id = ? AND user_id = ?",
+                             (now_iso(), chat_id, uid))
+                conn.commit()
+                preview = text[:120] or ("Опрос" if kind == "poll" else "Приглашение" if kind == "invite"
+                                         else "Поиск игроков" if kind == "lfg" else "Сообщение")
+                for member in group_member_ids(conn, chat_id):
+                    if member == uid:
+                        continue
+                    muted = conn.execute("SELECT muted_until FROM group_members WHERE chat_id = ? AND user_id = ?",
+                                         (chat_id, member)).fetchone()
+                    if muted and muted["muted_until"] and muted["muted_until"] > now_iso():
+                        continue
+                    push_async(member, dict(title=f"{user['nickname']} · {group_title(conn, g)}",
+                                            body=preview, url="/?view=chats", tag=f"group-{chat_id}"))
+                return self._send(200, dict(ok=True, id=mid))
+
+        m = re.match(r"^/api/groups/(\d+)/(typing|read|mute|panels|members)$", path)
+        if m:
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            chat_id, what = int(m.group(1)), m.group(2)
+            if not in_group(conn, chat_id, uid):
+                return self._send(404, {"error": "Чат не найден"})
+            if what == "typing":
+                conn.execute("UPDATE group_members SET typing_at = ? WHERE chat_id = ? AND user_id = ?",
+                             (now_iso(), chat_id, uid))
+                conn.commit()
+                return self._send(200, dict(ok=True))
+            if what == "read":
+                conn.execute("UPDATE group_members SET last_read_at = ? WHERE chat_id = ? AND user_id = ?",
+                             (now_iso(), chat_id, uid))
+                conn.commit()
+                return self._send(200, dict(ok=True))
+            if what == "mute":
+                body = self._json_body()
+                minutes = int(body.get("minutes") or 0)
+                until = None if minutes <= 0 else now_iso(minutes)
+                conn.execute("UPDATE group_members SET muted_until = ? WHERE chat_id = ? AND user_id = ?",
+                             (until, chat_id, uid))
+                conn.commit()
+                return self._send(200, dict(ok=True, muted=bool(until)))
+            if what == "members":
+                return self._send(200, dict(items=[user_card(conn, x) for x in group_member_ids(conn, chat_id)]))
+            if what == "panels":
+                rows = conn.execute("SELECT * FROM group_messages WHERE chat_id = ? AND deleted = 0 "
+                                    "ORDER BY id DESC LIMIT 300", (chat_id,)).fetchall()
+                pins, media, links, files = [], [], [], []
+                for r in rows:
+                    meta = {}
+                    if r["meta"]:
+                        try:
+                            meta = json.loads(r["meta"])
+                        except Exception:
+                            meta = {}
+                    if r["pinned"]:
+                        pins.append(dict(id=r["id"], text=(r["text"] or "")[:200], nick=user_display(conn, r["user_id"]),
+                                         created_at=r["created_at"]))
+                    for u in re.findall(r"https?://[^\s]+", r["text"] or ""):
+                        links.append(dict(id=r["id"], url=u[:300], nick=user_display(conn, r["user_id"]),
+                                          created_at=r["created_at"]))
+                    for att in (meta.get("attachments") or []):
+                        item = dict(id=r["id"], url=att.get("url", ""), name=att.get("name", ""),
+                                    type=att.get("type", ""), nick=user_display(conn, r["user_id"]),
+                                    created_at=r["created_at"])
+                        (media if str(att.get("type", "")).startswith("image") else files).append(item)
+                return self._send(200, dict(pins=pins[:50], media=media[:60], links=links[:60], files=files[:60]))
+
+        m = re.match(r"^/api/groups/(\d+)/messages/(\d+)/(edit|delete|react|pin|vote)$", path)
+        if m:
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            chat_id, mid, action = int(m.group(1)), int(m.group(2)), m.group(3)
+            if not in_group(conn, chat_id, uid):
+                return self._send(404, {"error": "Чат не найден"})
+            row = conn.execute("SELECT * FROM group_messages WHERE id = ? AND chat_id = ?", (mid, chat_id)).fetchone()
+            if not row:
+                return self._send(404, {"error": "Сообщение не найдено"})
+            body = self._json_body()
+            if action == "edit":
+                if row["user_id"] != uid:
+                    return self._send(403, {"error": "Можно править только свои сообщения"})
+                text = (body.get("text") or "").strip()[:4000]
+                if not text:
+                    return self._send(400, {"error": "Пустое сообщение"})
+                conn.execute("UPDATE group_messages SET text = ?, edited_at = ? WHERE id = ?", (text, now_iso(), mid))
+                conn.commit()
+                return self._send(200, dict(ok=True))
+            if action == "delete":
+                if row["user_id"] != uid:
+                    return self._send(403, {"error": "Можно удалять только свои сообщения"})
+                if row["deleted"]:
+                    return self._send(400, {"error": "Сообщение уже удалено"})
+                conn.execute("UPDATE group_messages SET deleted = 1, deleted_at = ?, text = '', reply_to = NULL "
+                             "WHERE id = ?", (now_iso(), mid))
+                conn.commit()
+                return self._send(200, dict(ok=True))
+            if action == "react":
+                ok = toggle_reaction(conn, "group", chat_id, mid, uid, body.get("value"))
+                if ok is None:
+                    return self._send(400, {"error": "Такой реакции нет", "allowed": REACTIONS_ALLOWED})
+                conn.commit()
+                return self._send(200, dict(ok=True, added=ok, allowed=REACTIONS_ALLOWED))
+            if action == "pin":
+                new = 0 if row["pinned"] else 1
+                conn.execute("UPDATE group_messages SET pinned = ? WHERE id = ?", (new, mid))
+                conn.commit()
+                return self._send(200, dict(ok=True, pinned=bool(new)))
+            if action == "vote":
+                if row["kind"] != "poll":
+                    return self._send(400, {"error": "Это не опрос"})
+                choice = int(body.get("choice", -1))
+                meta = json.loads(row["meta"] or "{}")
+                options = meta.get("options") or []
+                if not (0 <= choice < len(options)):
+                    return self._send(400, {"error": "Такого варианта нет"})
+                multi = bool(meta.get("multi"))
+                if not multi:
+                    conn.execute("DELETE FROM poll_votes WHERE chat_kind = 'group' AND chat_id = ? AND message_id = ? "
+                                 "AND user_id = ?", (chat_id, mid, uid))
+                conn.execute("INSERT OR IGNORE INTO poll_votes (chat_kind, chat_id, message_id, user_id, choice, "
+                             "created_at) VALUES ('group',?,?,?,?,?)", (chat_id, mid, uid, choice, now_iso()))
+                conn.commit()
+                return self._send(200, dict(ok=True, poll=poll_state(conn, "group", chat_id, mid, meta, uid)))
+
+        # --- личные диалоги: запросы, реакции, закреплённые, опросы ---
+        m = re.match(r"^/api/chats/(\d+)/(accept|ignore|mute)$", path)
+        if m and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            chat_id, action = int(m.group(1)), m.group(2)
+            c = conn.execute("SELECT * FROM chats WHERE id = ? AND (user_id = ? OR peer_user_id = ?)",
+                             (chat_id, uid, uid)).fetchone()
+            if not c:
+                return self._send(404, {"error": "Чат не найден"})
+            if action == "accept":
+                conn.execute("UPDATE chats SET requested = 0 WHERE id = ?", (chat_id,))
+                conn.commit()
+                return self._send(200, dict(ok=True))
+            if action == "ignore":
+                peer_uid, peer_nick, _, _ = chat_partner(conn, c, uid)
+                conn.execute("DELETE FROM messages WHERE chat_id = ?", (chat_id,))
+                conn.execute("DELETE FROM chats WHERE id = ?", (chat_id,))
+                conn.commit()
+                return self._send(200, dict(ok=True, ignored=peer_nick))
+            if action == "mute":
+                minutes = int(self._json_body().get("minutes") or 0)
+                until = None if minutes <= 0 else now_iso(minutes)
+                conn.execute("UPDATE chats SET muted_until = ? WHERE id = ?", (until, chat_id))
+                conn.commit()
+                return self._send(200, dict(ok=True, muted=bool(until)))
+
+        m = re.match(r"^/api/chats/(\d+)/messages/(\d+)/(react|pin|vote)$", path)
+        if m:
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            chat_id, mid, action = int(m.group(1)), int(m.group(2)), m.group(3)
+            c = conn.execute("SELECT * FROM chats WHERE id = ? AND (user_id = ? OR peer_user_id = ?)",
+                             (chat_id, uid, uid)).fetchone()
+            if not c:
+                return self._send(404, {"error": "Чат не найден"})
+            row = conn.execute("SELECT * FROM messages WHERE id = ? AND chat_id = ?", (mid, chat_id)).fetchone()
+            if not row:
+                return self._send(404, {"error": "Сообщение не найдено"})
+            body = self._json_body()
+            if action == "react":
+                ok = toggle_reaction(conn, "dm", chat_id, mid, uid, body.get("value"))
+                if ok is None:
+                    return self._send(400, {"error": "Такой реакции нет", "allowed": REACTIONS_ALLOWED})
+                conn.commit()
+                return self._send(200, dict(ok=True, added=ok, allowed=REACTIONS_ALLOWED))
+            if action == "pin":
+                new = 0 if (row["pinned"] if "pinned" in row.keys() else 0) else 1
+                conn.execute("UPDATE messages SET pinned = ? WHERE id = ?", (new, mid))
+                conn.commit()
+                return self._send(200, dict(ok=True, pinned=bool(new)))
+            return self._send(400, {"error": "Опросы доступны в групповых чатах"})
+
+        # --- поиск игроков (LFG): карточка в чат + открытое пати ---
+        if path == "/api/lfg" and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            body = self._json_body()
+            game_id = (body.get("game_id") or "")[:40]
+            if game_id not in GAME_BY_ID:
+                return self._send(400, {"error": "Выбери игру из каталога"})
+            need = max(1, min(9, int(body.get("need") or 1)))
+            size = max(2, min(10, int(body.get("size") or (need + 1))))
+            # если у игрока уже есть открытое пати — карточка кладётся в него, второе не создаём
+            open_now = conn.execute(
+                "SELECT p.* FROM parties p JOIN group_members m ON m.chat_id = p.chat_id "
+                "WHERE m.user_id = ? AND p.status IN ('open','playing') ORDER BY p.id DESC LIMIT 1",
+                (uid,)).fetchone()
+            if open_now:
+                party_id, chat_id = open_now["id"], open_now["chat_id"]
+                conn.execute(
+                    "UPDATE parties SET game_id = ?, mode = ?, region = ?, rank = ?, mic = ?, lang = ?, "
+                    "size = ?, note = ?, updated_at = ? WHERE id = ?",
+                    (game_id, (body.get("mode") or "")[:20], (body.get("region") or "")[:20],
+                     (body.get("rank") or "")[:20], int(bool(body.get("mic"))), (body.get("lang") or "")[:20],
+                     size, (body.get("note") or "")[:200], now_iso(), party_id))
+                gg0 = GAME_BY_ID.get(game_id)
+                conn.execute("UPDATE group_chats SET game_id = ?, updated_at = ?, title = ? WHERE id = ?",
+                             (game_id, now_iso(), "Пати · " + (gg0["name"] if gg0 else "Игра"), chat_id))
+            else:
+                party_id, chat_id = create_party(conn, uid, game_id,
+                                                mode=(body.get("mode") or "")[:20],
+                                                region=(body.get("region") or "")[:20],
+                                                rank=(body.get("rank") or "")[:20],
+                                                mic=body.get("mic"), size=size,
+                                                lang=(body.get("lang") or "")[:20],
+                                                note=(body.get("note") or "")[:200])
+            g = GAME_BY_ID.get(game_id)
+            meta = dict(party_id=party_id, game_id=game_id, game_name=(g["name"] if g else ""),
+                        game_short=(g["short"] if g else ""), mode=(body.get("mode") or ""),
+                        rank=(body.get("rank") or ""), region=(body.get("region") or ""),
+                        need=need, mic=bool(body.get("mic")), lang=(body.get("lang") or ""),
+                        note=(body.get("note") or "")[:200])
+            # карточку кладём в пати-чат и, если просили, в личный диалог
+            post_card(conn, chat_id, uid, "lfg", meta)
+            target_chat = body.get("chat_id")
+            target_kind = body.get("chat_kind") or "group"
+            if target_chat:
+                try:
+                    target_chat = int(target_chat)
+                except Exception:
+                    target_chat = None
+            if target_chat and target_kind == "group":
+                # карточка уже лежит в этом чате (пати — это и есть групповой чат): второй раз не добавляем
+                if target_chat != chat_id and in_group(conn, target_chat, uid):
+                    post_card(conn, target_chat, uid, "lfg", meta)
+                    conn.execute("UPDATE group_chats SET updated_at = ? WHERE id = ?", (now_iso(), target_chat))
+            elif target_chat and target_kind == "dm":
+                c = conn.execute("SELECT * FROM chats WHERE id = ? AND (user_id = ? OR peer_user_id = ?)",
+                                 (target_chat, uid, uid)).fetchone()
+                if c:
+                    _, peer_nick, is_initiator, _ = chat_partner(conn, c, uid)
+                    mid = conn.execute(
+                        "INSERT INTO messages (chat_id, sender, text, kind, meta, created_at) VALUES (?,?,?,?,?,?)",
+                        (target_chat, "me" if is_initiator else "peer", "", "lfg",
+                         json.dumps(meta, ensure_ascii=False), now_iso())).lastrowid
+                    conn.execute("UPDATE chats SET updated_at = ? WHERE id = ?", (now_iso(), target_chat))
+                    peer_uid = c["peer_user_id"] if is_initiator else c["user_id"]
+                    if peer_uid:
+                        push_async(peer_uid, dict(title="Ищут игроков: " + (g["name"] if g else ""),
+                                                  body=f"{user['nickname']} собирает пати",
+                                                  url="/?view=chats", tag=f"chat-{target_chat}"))
+            conn.commit()
+            return self._send(200, dict(ok=True, party_id=party_id, chat_id=chat_id, meta=meta))
+
+        # --- приглашение в игру: отдельная карточка в личке ---
+        m = re.match(r"^/api/chats/(\d+)/game-invite$", path)
+        if m and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            chat_id = int(m.group(1))
+            c = conn.execute("SELECT * FROM chats WHERE id = ? AND (user_id = ? OR peer_user_id = ?)",
+                             (chat_id, uid, uid)).fetchone()
+            if not c:
+                return self._send(404, {"error": "Чат не найден"})
+            body = self._json_body()
+            game_id = (body.get("game_id") or "")[:40]
+            if game_id not in GAME_BY_ID:
+                return self._send(400, {"error": "Выбери игру из каталога"})
+            _, peer_nick, is_initiator, _ = chat_partner(conn, c, uid)
+            peer_uid = c["peer_user_id"] if is_initiator else c["user_id"]
+            if peer_uid and is_blocked_between(conn, uid, peer_uid):
+                return self._send(403, {"error": "Недоступно"})
+            g = GAME_BY_ID.get(game_id)
+            meta = dict(game_id=game_id, game_name=(g["name"] if g else ""), game_short=(g["short"] if g else ""),
+                        mode=(body.get("mode") or ""), rank=(body.get("rank") or ""),
+                        region=(body.get("region") or ""), note=(body.get("note") or "")[:200],
+                        state="pending", by=user["nickname"])
+            mid = conn.execute(
+                "INSERT INTO messages (chat_id, sender, text, kind, meta, created_at) VALUES (?,?,?,?,?,?)",
+                (chat_id, "me" if is_initiator else "peer", "", "invite",
+                 json.dumps(meta, ensure_ascii=False), now_iso())).lastrowid
+            conn.execute("UPDATE chats SET updated_at = ? WHERE id = ?", (now_iso(), chat_id))
+            conn.commit()
+            if peer_uid:
+                push_async(peer_uid, dict(title="Приглашение в игру",
+                                          body=f"{user['nickname']}: {g['name'] if g else ''}",
+                                          url="/?view=chats", tag=f"chat-{chat_id}"))
+            return self._send(200, dict(ok=True, id=mid))
+
+        m = re.match(r"^/api/chats/(\d+)/messages/(\d+)/invite-(accept|decline)$", path)
+        if m and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            chat_id, mid, what = int(m.group(1)), int(m.group(2)), m.group(3)
+            c = conn.execute("SELECT * FROM chats WHERE id = ? AND (user_id = ? OR peer_user_id = ?)",
+                             (chat_id, uid, uid)).fetchone()
+            if not c:
+                return self._send(404, {"error": "Чат не найден"})
+            row = conn.execute("SELECT * FROM messages WHERE id = ? AND chat_id = ?", (mid, chat_id)).fetchone()
+            if not row or row["kind"] != "invite":
+                return self._send(404, {"error": "Приглашение не найдено"})
+            meta = json.loads(row["meta"] or "{}")
+            if meta.get("state") != "pending":
+                return self._send(400, {"error": "Уже отвечено"})
+            _, peer_nick, is_initiator, _ = chat_partner(conn, c, uid)
+            peer_uid = c["peer_user_id"] if is_initiator else c["user_id"]
+            if what == "accept":
+                meta["state"] = "accepted"
+                meta["answered_by"] = user["nickname"]
+                conn.execute("UPDATE messages SET meta = ? WHERE id = ?", (json.dumps(meta, ensure_ascii=False), mid))
+                conn.execute("INSERT INTO messages (chat_id, sender, text, kind, created_at) VALUES (?,?,?,?,?)",
+                             (chat_id, "me" if not is_initiator else "peer",
+                              f"{user['nickname']} принял приглашение: {meta.get('game_name', '')}", "system", now_iso()))
+                if peer_uid:
+                    push_async(peer_uid, dict(title="Приглашение принято",
+                                              body=f"{user['nickname']} готов играть: {meta.get('game_name','')}",
+                                              url="/?view=chats", tag=f"chat-{chat_id}"))
+                conn.execute("UPDATE chats SET updated_at = ? WHERE id = ?", (now_iso(), chat_id))
+                conn.commit()
+                return self._send(200, dict(ok=True, chat_id=chat_id))
+            meta["state"] = "declined"
+            meta["answered_by"] = user["nickname"]
+            conn.execute("UPDATE messages SET meta = ? WHERE id = ?", (json.dumps(meta, ensure_ascii=False), mid))
+            conn.commit()
+            return self._send(200, dict(ok=True))
+
+        # --- история сессий и «играть снова» ---
+        if path == "/api/sessions" and method == "GET":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            out = []
+            for r in conn.execute("SELECT * FROM party_sessions ORDER BY id DESC LIMIT 100").fetchall():
+                members = json.loads(r["members"] or "[]")
+                if not any(m.get("user_id") == uid for m in members):
+                    continue
+                started = r["started_at"] or now_iso()
+                ended = r["ended_at"]
+                minutes = r["minutes"]
+                if minutes is None:
+                    try:
+                        t0 = datetime.fromisoformat(started)
+                        t1 = datetime.fromisoformat(ended) if ended else datetime.now(timezone.utc)
+                        minutes = max(1, int((t1 - t0).total_seconds() // 60))
+                    except Exception:
+                        minutes = 0
+                g = GAME_BY_ID.get(r["game_id"])
+                out.append(dict(id=r["id"], game_id=r["game_id"], game_name=(g["name"] if g else ""),
+                                game_short=(g["short"] if g else ""), chat_id=r["chat_id"],
+                                minutes=minutes, started_at=started, ended_at=ended,
+                                finished=bool(ended), players=len(members),
+                                members=[dict(user_id=m.get("user_id"), nick=m.get("nick"),
+                                              is_me=(m.get("user_id") == uid)) for m in members]))
+            return self._send(200, dict(items=out[:30]))
+
+        m = re.match(r"^/api/sessions/(\d+)/play-again$", path)
+        if m and method == "POST":
+            if not user:
+                return self._send(401, {"error": "Нужен вход"})
+            r = conn.execute("SELECT * FROM party_sessions WHERE id = ?", (int(m.group(1)),)).fetchone()
+            if not r:
+                return self._send(404, {"error": "Сессия не найдена"})
+            members = json.loads(r["members"] or "[]")
+            if not any(x.get("user_id") == uid for x in members):
+                return self._send(403, {"error": "Ты не участвовал в этой сессии"})
+            open_now = conn.execute(
+                "SELECT p.* FROM parties p JOIN group_members gm ON gm.chat_id = p.chat_id "
+                "WHERE gm.user_id = ? AND p.status IN ('open','playing')", (uid,)).fetchone()
+            if open_now:
+                pb = party_brief(conn, open_now["id"], uid)
+                return self._send(200, dict(ok=True, already=True, party=pb, chat_id=open_now["chat_id"]))
+            party_id, chat_id = create_party(conn, uid, r["game_id"], size=max(2, len(members)))
+            invited = []
+            for x in members:
+                mid_uid = x.get("user_id")
+                if not mid_uid or mid_uid == uid:
+                    continue
+                if is_blocked_between(conn, uid, mid_uid):
+                    continue
+                conn.execute("INSERT OR IGNORE INTO group_members (chat_id, user_id, joined_at) VALUES (?,?,?)",
+                             (chat_id, mid_uid, now_iso()))
+                invited.append(user_display(conn, mid_uid))
+                push_async(mid_uid, dict(title="Состав снова в сборе",
+                                         body=f"{user['nickname']} собирает пати: "
+                                              f"{GAME_BY_ID.get(r['game_id'], {}).get('name', '')}",
+                                         url="/?view=chats", tag=f"party-{party_id}"))
+            if invited:
+                add_system_message(conn, chat_id, "Приглашены те, с кем играли: " + ", ".join(invited))
+            conn.commit()
+            return self._send(200, dict(ok=True, party=party_brief(conn, party_id, uid), chat_id=chat_id))
 
         return self._send(404, {"error": "Неизвестный метод API"})
 
